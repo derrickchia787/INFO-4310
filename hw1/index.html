@@ -10,15 +10,6 @@
         body {
             font-family: Arial, sans-serif;
         }
-        .tooltip {
-            position: absolute;
-            background-color: white;
-            padding: 5px;
-            border: 1px solid black;
-            font-size: 12px;
-            pointer-events: none;
-            display: none;
-        }
         .legend {
             font-size: 12px;
         }
@@ -26,13 +17,11 @@
 </head>
 <body>
     <h2>San Francisco Tree Density by Neighborhood</h2>
-    <div class="tooltip"></div>
     <svg width="800" height="600"></svg>
     <script>
         const width = 800;
         const height = 600;
         const svg = d3.select("svg");
-        const tooltip = d3.select(".tooltip");
 
         const projection = d3.geoMercator()
             .center([-122.44, 37.76])
@@ -76,29 +65,18 @@
                     const name = d.properties.name;
                     return treeCounts[name] ? colorScale(treeCounts[name]) : "#ccc";
                 })
-                .attr("stroke", "#333")
-                .on("mouseover", function (event, d) {
-                    d3.select(this).attr("stroke-width", "3px");
-                    const name = d.properties.name;
-                    const count = treeCounts[name] || 0;
-                    tooltip.style("display", "block")
-                           .style("left", (event.pageX + 10) + "px")
-                           .style("top", (event.pageY + 10) + "px")
-                           .html(`<strong>${name}</strong><br/>Trees: ${count}`);
-                })
-                .on("mousemove", function (event) {
-                    tooltip.style("left", (event.pageX + 10) + "px")
-                           .style("top", (event.pageY + 10) + "px");
-                })
-                .on("mouseout", function () {
-                    d3.select(this).attr("stroke-width", "1px");
-                    tooltip.style("display", "none");
-                });
+                .attr("stroke", "#333");
 
             // Add a legend
             const legend = svg.append("g")
                 .attr("class", "legend")
                 .attr("transform", "translate(600,400)");
+
+            legend.append("text")
+                .attr("x", 0)
+                .attr("y", -10)
+                .style("font-weight", "bold")
+                .text("Tree Density (Number of Trees)");
 
             legend.selectAll("rect")
                 .data(colorScale.range().reverse())
@@ -109,9 +87,10 @@
                 .attr("height", 20)
                 .attr("fill", d => d);
 
-            legend.selectAll("text")
+            legend.selectAll("text.legend-label")
                 .data(colorScale.range().reverse())
                 .enter().append("text")
+                .attr("class", "legend-label")
                 .attr("x", 30)
                 .attr("y", (d, i) => i * 20 + 15)
                 .text((d, i) => {
