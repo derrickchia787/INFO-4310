@@ -17,6 +17,7 @@
             border: 1px solid black;
             font-size: 12px;
             pointer-events: none;
+            display: none;
         }
         .legend {
             font-size: 12px;
@@ -25,11 +26,13 @@
 </head>
 <body>
     <h2>San Francisco Tree Density by Neighborhood</h2>
+    <div class="tooltip"></div>
     <svg width="800" height="600"></svg>
     <script>
         const width = 800;
         const height = 600;
         const svg = d3.select("svg");
+        const tooltip = d3.select(".tooltip");
 
         const projection = d3.geoMercator()
             .center([-122.44, 37.76])
@@ -76,9 +79,20 @@
                 .attr("stroke", "#333")
                 .on("mouseover", function (event, d) {
                     d3.select(this).attr("stroke-width", "3px");
+                    const name = d.properties.name;
+                    const count = treeCounts[name] || 0;
+                    tooltip.style("display", "block")
+                           .style("left", (event.pageX + 10) + "px")
+                           .style("top", (event.pageY + 10) + "px")
+                           .html(`<strong>${name}</strong><br/>Trees: ${count}`);
                 })
-                .on("mouseout", function (event, d) {
+                .on("mousemove", function (event) {
+                    tooltip.style("left", (event.pageX + 10) + "px")
+                           .style("top", (event.pageY + 10) + "px");
+                })
+                .on("mouseout", function () {
                     d3.select(this).attr("stroke-width", "1px");
+                    tooltip.style("display", "none");
                 });
 
             // Add a legend
@@ -104,8 +118,7 @@
                     const range = colorScale.invertExtent(d);
                     return `${Math.round(range[0])} - ${Math.round(range[1])} trees`;
                 });
-
-        }).catch(error => console.error("Error loading data:", error));
+        });
     </script>
 </body>
 </html>
