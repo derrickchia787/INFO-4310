@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pittsburgh Explorer: Restaurants & Homes</title>
+    <title>Pittsburgh Explorer: Entertainment/Food & Homes</title>
     <script src="https://d3js.org/d3.v6.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
@@ -75,20 +75,29 @@
             border-radius: 4px;
             display: none;
         }
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .slider-container span {
+            font-size: 14px;
+            color: #555;
+        }
     </style>
 </head>
 <body>
-    <h2>Pittsburgh Explorer: Restaurants & Homes</h2>
+    <h2>Pittsburgh Explorer: Entertainment/Food & Homes</h2>
     <div class="container">
         <div class="controls">
             <label>Show:
                 <select id="dataType">
-                    <option value="restaurants">Restaurants</option>
+                    <option value="entertainment_food">Entertainment/Food</option>
                     <option value="homes">Homes</option>
                 </select>
             </label>
             
-            <div id="restaurantFilters">
+            <div id="entertainmentFoodFilters">
                 <label>Rating:
                     <select id="ratingFilter">
                         <option value="any">Any</option>
@@ -112,8 +121,17 @@
             </div>
 
             <div id="homeFilters" class="hidden">
-                <label>Max Price: <input type="number" id="priceFilter" placeholder="Max price"></label>
-                <label>Min Bedrooms: <input type="number" id="bedroomFilter" placeholder="Min bedrooms"></label>
+                <label>Price Range:
+                    <select id="priceFilter">
+                        <option value="any">Any</option>
+                    </select>
+                </label>
+                <label>Min Bedrooms:
+                    <div class="slider-container">
+                        <input type="range" id="bedroomFilter" min="0" max="5" value="0">
+                        <span id="bedroomValue">0+</span>
+                    </div>
+                </label>
                 <label>Neighborhood:
                     <select id="neighborhoodFilter">
                         <option value="any">Any</option>
@@ -134,7 +152,7 @@
         }).addTo(map);
 
         let markers = [];
-        let restaurantData = [];
+        let entertainmentFoodData = [];
         let homeData = [];
 
         // Load Zillow Homes Data
@@ -148,6 +166,31 @@
                 address: d['Street Address']
             }));
 
+            // Calculate max price and max bedrooms
+            let maxPrice = Math.max(...homeData.map(d => d.price));
+            let maxBedrooms = Math.max(...homeData.map(d => d.bedrooms));
+
+            // Generate price ranges
+            let priceRanges = generatePriceRanges(maxPrice);
+            let priceFilter = document.getElementById("priceFilter");
+            priceRanges.forEach(range => {
+                let option = document.createElement("option");
+                option.value = range.value;
+                option.textContent = range.label;
+                priceFilter.appendChild(option);
+            });
+
+            // Set max value for the bedroom slider
+            let bedroomFilter = document.getElementById("bedroomFilter");
+            bedroomFilter.max = maxBedrooms;
+
+            // Update bedroom slider value display
+            bedroomFilter.addEventListener("input", () => {
+                document.getElementById("bedroomValue").textContent = `${bedroomFilter.value}+`;
+                update();
+            });
+
+            // Populate neighborhood filter
             let uniqueNeighborhoods = [...new Set(homeData.map(d => d.neighborhood))];
             let neighborhoodSelect = document.getElementById("neighborhoodFilter");
             uniqueNeighborhoods.forEach(n => {
@@ -160,9 +203,22 @@
             update();
         });
 
-        // Load Yelp Restaurants Data
+        // Function to generate price ranges
+        function generatePriceRanges(maxPrice) {
+            let ranges = [];
+            let step = 100000;
+            for (let i = 0; i < maxPrice; i += step) {
+                ranges.push({
+                    value: `${i}-${i + step}`,
+                    label: `$${i.toLocaleString()} – $${(i + step).toLocaleString()}`
+                });
+            }
+            return ranges;
+        }
+
+        // Load Yelp Entertainment/Food Data
         d3.csv("yelp_pittsburgh.csv").then(data => {
-            restaurantData = data.map(d => ({
+            entertainmentFoodData = data.map(d => ({
                 name: d.name,
                 rating: +d.rating,
                 latitude: +d.latitude,
@@ -175,17 +231,17 @@
         function update() {
             let selectedType = document.getElementById("dataType").value;
             
-            document.getElementById("restaurantFilters").classList.toggle("hidden", selectedType !== "restaurants");
+            document.getElementById("entertainmentFoodFilters").classList.toggle("hidden", selectedType !== "entertainment_food");
             document.getElementById("homeFilters").classList.toggle("hidden", selectedType !== "homes");
 
             markers.forEach(marker => map.removeLayer(marker));
             markers = [];
 
-            if (selectedType === "restaurants") {
+            if (selectedType === "entertainment_food") {
                 let selectedRating = document.getElementById("ratingFilter").value;
                 let selectedCategory = document.getElementById("categoryFilter").value;
 
-                let filteredData = restaurantData.filter(d => 
+                let filteredData = entertainmentFoodData.filter(d => 
                     (selectedRating === "any" || d.rating >= +selectedRating) &&
                     (selectedCategory === "any" || d.category === selectedCategory)
                 );
@@ -199,18 +255,21 @@
                     }).addTo(map);
 
                     marker.bindPopup(`<b>${d.name}</b><br>Rating: ${d.rating}<br>Category: ${d.category}`);
-                    marker.on("click", () => showDetails(`Restaurant: ${d.name}<br>Rating: ${d.rating}<br>Category: ${d.category}`));
+                    marker.on("click", () => showDetails(`Entertainment/Food: ${d.name}<br>Rating: ${d.rating}<br>Category: ${d.category}`));
                     markers.push(marker);
                 });
 
             } else if (selectedType === "homes") {
-                let maxPrice = document.getElementById("priceFilter").value;
-                let minBedrooms = document.getElementById("bedroomFilter").value;
+                let selectedPriceRange = document.getElementById("priceFilter").value;
+                let selectedBedrooms = document.getElementById("bedroomFilter").value;
                 let selectedNeighborhood = document.getElementById("neighborhoodFilter").value;
 
                 let filteredData = homeData.filter(d => 
-                    (!maxPrice || d.price <= +maxPrice) &&
-                    (!minBedrooms || d.bedrooms >= +minBedrooms) &&
+                    (selectedPriceRange === "any" || (
+                        d.price >= +selectedPriceRange.split("-")[0] &&
+                        d.price <= +selectedPriceRange.split("-")[1]
+                    )) &&
+                    (selectedBedrooms === "0" || d.bedrooms >= +selectedBedrooms) &&
                     (selectedNeighborhood === "any" || d.neighborhood === selectedNeighborhood)
                 );
 
@@ -222,8 +281,8 @@
                         fillOpacity: 0.5
                     }).addTo(map);
 
-                    marker.bindPopup(`<b>Address:</b> ${d.address}<br>Price: $${d.price}<br>Bedrooms: ${d.bedrooms}<br>Neighborhood: ${d.neighborhood}`);
-                    marker.on("click", () => showDetails(`Address: ${d.address}<br>Price: $${d.price}<br>Bedrooms: ${d.bedrooms}<br>Neighborhood: ${d.neighborhood}`));
+                    marker.bindPopup(`<b>Address:</b> ${d.address}<br>Price: $${d.price.toLocaleString()}<br>Bedrooms: ${d.bedrooms}<br>Neighborhood: ${d.neighborhood}`);
+                    marker.on("click", () => showDetails(`Address: ${d.address}<br>Price: $${d.price.toLocaleString()}<br>Bedrooms: ${d.bedrooms}<br>Neighborhood: ${d.neighborhood}`));
                     markers.push(marker);
                 });
             }
@@ -236,8 +295,7 @@
         document.getElementById("dataType").addEventListener("change", update);
         document.getElementById("ratingFilter").addEventListener("change", update);
         document.getElementById("categoryFilter").addEventListener("change", update);
-        document.getElementById("priceFilter").addEventListener("input", update);
-        document.getElementById("bedroomFilter").addEventListener("input", update);
+        document.getElementById("priceFilter").addEventListener("change", update);
         document.getElementById("neighborhoodFilter").addEventListener("change", update);
     </script>
 </body>
