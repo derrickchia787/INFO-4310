@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pittsburgh Explorer: Restaurants & Homes</title>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f4f4f9;
+        }
+        h2 {
+            margin: 20px 0;
+            color: #333;
+        }
+        .container {
+            display: flex;
+            width: 95%;
+            max-width: 1200px;
+            margin: 20px;
+            gap: 20px;
+        }
+        .controls {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            width: 300px;
+        }
+        .controls label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: bold;
+            color: #555;
+        }
+        .controls select, .controls input {
+            width: 100%;
+            padding: 8px;
+            margin-top: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        #map {
+            flex: 1;
+            height: 600px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        .sidebar {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            width: 300px;
+            height: 560px;
+            overflow-y: auto;
+        }
+        .hidden {
+            display: none;
+        }
+        .tooltip {
+            position: absolute;
+            background: white;
+            border: 1px solid #ccc;
+            padding: 10px;
+            border-radius: 4px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h2>Pittsburgh Explorer: Restaurants & Homes</h2>
+    <div class="container">
+        <div class="controls">
+            <label>Show:
+                <select id="dataType">
+                    <option value="restaurants">Restaurants</option>
+                    <option value="homes">Homes</option>
+                </select>
+            </label>
+            
+            <div id="restaurantFilters">
+                <label>Rating:
+                    <select id="ratingFilter">
+                        <option value="any">Any</option>
+                        <option value="1">1+</option>
+                        <option value="2">2+</option>
+                        <option value="3">3+</option>
+                        <option value="4">4+</option>
+                        <option value="5">5</option>
+                    </select>
+                </label>
+                <label>Category:
+                    <select id="categoryFilter">
+                        <option value="any">Any</option>
+                        <option value="food">Food</option>
+                        <option value="nightlife">Nightlife</option>
+                        <option value="shopping">Shopping</option>
+                        <option value="active">Active</option>
+                        <option value="arts">Arts</option>
+                    </select>
+                </label>
+            </div>
+
+            <div id="homeFilters" class="hidden">
+                <label>Max Price: <input type="number" id="priceFilter" placeholder="Max price"></label>
+                <label>Min Bedrooms: <input type="number" id="bedroomFilter" placeholder="Min bedrooms"></label>
+                <label>Neighborhood:
+                    <select id="neighborhoodFilter">
+                        <option value="any">Any</option>
+                    </select>
+                </label>
+            </div>
+        </div>
+
+        <div id="map"></div>
+        <div class="sidebar" id="infoPanel">Click a marker for details</div>
+    </div>
+
+    <script>
+        // Initialize the map with OpenStreetMap tiles
+        let map = L.map('map').setView([40.4406, -79.9959], 12);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        let markers = [];
+        let restaurantData = [];
+        let homeData = [];
+
+        // Load Zillow Homes Data
+        d3.csv("zillow_pittsburgh.csv").then(data => {
+            homeData = data.map(d => ({
+                price: +d['Sale Amount'],
+                bedrooms: +d.Bedrooms,
+                latitude: +d.Latitude,
+                longitude: +d.Longitude,
+                neighborhood: d.Neighborhood,
+                address: d['Street Address']
+            }));
+
+            let uniqueNeighborhoods = [...new Set(homeData.map(d => d.neighborhood))];
+            let neighborhoodSelect = document.getElementById("neighborhoodFilter");
+            uniqueNeighborhoods.forEach(n => {
+                let option = document.createElement("option");
+                option.value = n;
+                option.textContent = n;
+                neighborhoodSelect.appendChild(option);
+            });
+
+            update();
+        });
+
+        // Load Yelp Restaurants Data
+        d3.csv("yelp_pittsburgh.csv").then(data => {
+            restaurantData = data.map(d => ({
+                name: d.name,
+                rating: +d.rating,
+                latitude: +d.latitude,
+                longitude: +d.longitude,
+                category: d.type
+            }));
+            update();
+        });
+
+        function update() {
+            let selectedType = document.getElementById("dataType").value;
+            
+            document.getElementById("restaurantFilters").classList.toggle("hidden", selectedType !== "restaurants");
+            document.getElementById("homeFilters").classList.toggle("hidden", selectedType !== "homes");
+
+            markers.forEach(marker => map.removeLayer(marker));
+            markers = [];
+
+            if (selectedType === "restaurants") {
+                let selectedRating = document.getElementById("ratingFilter").value;
+                let selectedCategory = document.getElementById("categoryFilter").value;
+
+                let filteredData = restaurantData.filter(d => 
+                    (selectedRating === "any" || d.rating >= +selectedRating) &&
+                    (selectedCategory === "any" || d.category === selectedCategory)
+                );
+
+                filteredData.forEach(d => {
+                    let marker = L.circleMarker([d.latitude, d.longitude], {
+                        radius: 6,
+                        color: "red",
+                        fillColor: "red",
+                        fillOpacity: 0.5
+                    }).addTo(map);
+
+                    marker.bindPopup(`<b>${d.name}</b><br>Rating: ${d.rating}<br>Category: ${d.category}`);
+                    marker.on("click", () => showDetails(`Restaurant: ${d.name}<br>Rating: ${d.rating}<br>Category: ${d.category}`));
+                    markers.push(marker);
+                });
+
+            } else if (selectedType === "homes") {
+                let maxPrice = document.getElementById("priceFilter").value;
+                let minBedrooms = document.getElementById("bedroomFilter").value;
+                let selectedNeighborhood = document.getElementById("neighborhoodFilter").value;
+
+                let filteredData = homeData.filter(d => 
+                    (!maxPrice || d.price <= +maxPrice) &&
+                    (!minBedrooms || d.bedrooms >= +minBedrooms) &&
+                    (selectedNeighborhood === "any" || d.neighborhood === selectedNeighborhood)
+                );
+
+                filteredData.forEach(d => {
+                    let marker = L.circleMarker([d.latitude, d.longitude], {
+                        radius: 6,
+                        color: "blue",
+                        fillColor: "blue",
+                        fillOpacity: 0.5
+                    }).addTo(map);
+
+                    marker.bindPopup(`<b>Address:</b> ${d.address}<br>Price: $${d.price}<br>Bedrooms: ${d.bedrooms}<br>Neighborhood: ${d.neighborhood}`);
+                    marker.on("click", () => showDetails(`Address: ${d.address}<br>Price: $${d.price}<br>Bedrooms: ${d.bedrooms}<br>Neighborhood: ${d.neighborhood}`));
+                    markers.push(marker);
+                });
+            }
+        }
+
+        function showDetails(text) {
+            document.getElementById("infoPanel").innerHTML = text;
+        }
+
+        document.getElementById("dataType").addEventListener("change", update);
+        document.getElementById("ratingFilter").addEventListener("change", update);
+        document.getElementById("categoryFilter").addEventListener("change", update);
+        document.getElementById("priceFilter").addEventListener("input", update);
+        document.getElementById("bedroomFilter").addEventListener("input", update);
+        document.getElementById("neighborhoodFilter").addEventListener("change", update);
+    </script>
+</body>
+</html>
