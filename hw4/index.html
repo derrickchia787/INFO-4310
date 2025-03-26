@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pixar Film Ratings - No Overlapping</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 20px;
+            background-color: #f8f8f8;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 5px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 20px;
+        }
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .control-group {
+            margin: 5px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        select, input {
+            padding: 5px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+        .chart-container {
+            margin-top: 20px;
+            overflow-x: auto;
+        }
+        .tooltip {
+            position: absolute;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            pointer-events: none;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            font-size: 14px;
+            max-width: 300px;
+        }
+        .legend {
+            margin-top: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+        }
+        .legend-item {
+            margin: 5px 15px;
+        }
+        .film-rating {
+            font-weight: bold;
+        }
+        .rating-G { color: #2ecc71; }
+        .rating-PG { color: #e67e22; }
+        .rating-NA { color: #95a5a6; }
+        .bar {
+            transition: all 0.3s ease;
+        }
+        .highlight {
+            opacity: 1;
+            stroke: #333;
+            stroke-width: 2px;
+        }
+        .dim {
+            opacity: 0.3;
+        }
+        .franchise-controls {
+            display: flex;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+        .franchise-btn {
+            margin: 2px 5px;
+            padding: 3px 8px;
+            background: #eee;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .franchise-btn.active {
+            background: #4285f4;
+            color: white;
+            border-color: #3367d6;
+        }
+        .runtime-label {
+            font-size: 11px;
+            fill: #333;
+            text-anchor: start;
+        }
+        .y-axis text {
+            font-size: 12px;
+            text-anchor: end;
+        }
+        .runtime-line {
+            stroke: #e41a1c;
+            stroke-width: 2;
+            stroke-dasharray: 3,3;
+        }
+        .film-label {
+            font-size: 12px;
+            text-anchor: end;
+        }
+        .chart-svg {
+            display: block;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Pixar Film Ratings</h1>
+        
+        <div class="controls">
+            <div class="control-group">
+                <label for="sort-by">Sort by:</label>
+                <select id="sort-by">
+                    <option value="average">Average Rating</option>
+                    <option value="name">Film Name</option>
+                    <option value="year">Release Year</option>
+                    <option value="runtime">Run Time</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label for="filter-year">Release Year Range:</label>
+                <div>
+                    <input type="range" id="filter-year" min="1995" max="2023" value="1995" step="1" style="width: 200px;">
+                    <span id="year-value">1995-2023</span>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <label for="filter-rating">Film Rating:</label>
+                <select id="filter-rating">
+                    <option value="all">All Ratings</option>
+                    <option value="G">G</option>
+                    <option value="PG">PG</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="franchise-controls">
+            <span>Highlight Franchise:</span>
+            <div class="franchise-btn" data-franchise="Toy Story">Toy Story</div>
+            <div class="franchise-btn" data-franchise="Cars">Cars</div>
+            <div class="franchise-btn" data-franchise="Incredibles">Incredibles</div>
+            <div class="franchise-btn" data-franchise="Finding">Finding Nemo/Dory</div>
+            <div class="franchise-btn" data-franchise="Monsters">Monsters</div>
+            <div class="franchise-btn" data-franchise="none">None</div>
+        </div>
+        
+        <div class="chart-container">
+            <svg class="chart-svg" width="1300" height="850"></svg>
+        </div>
+        
+        <div class="legend">
+            <div class="legend-item">
+                <h3>Film Rating</h3>
+                <div><span class="rating-G">■</span> G Rated</div>
+                <div><span class="rating-PG">■</span> PG Rated</div>
+                <div><span class="rating-NA">■</span> Not Rated/NA</div>
+            </div>
+            <div class="legend-item">
+                <h3>Run Time</h3>
+                <svg width="200" height="40">
+                    <line x1="10" y1="15" x2="60" y2="15" class="runtime-line"/>
+                    <text x="70" y="18" font-size="12">90 min</text>
+                    <line x1="10" y1="30" x2="90" y2="30" class="runtime-line"/>
+                    <text x="100" y="33" font-size="12">120 min</text>
+                </svg>
+            </div>
+            <div class="legend-item">
+                <h3>Release Year</h3>
+                <svg width="200" height="20">
+                    <defs>
+                        <linearGradient id="yearGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stop-color="#6baed6" />
+                            <stop offset="100%" stop-color="#08306b" />
+                        </linearGradient>
+                    </defs>
+                    <rect x="0" y="0" width="200" height="15" fill="url(#yearGradient)"/>
+                    <text x="0" y="35" font-size="12">1995</text>
+                    <text x="180" y="35" font-size="12" text-anchor="end">2023</text>
+                </svg>
+            </div>
+        </div>
+    </div>
+    
+    <div class="tooltip"></div>
+    
+    <script>
+        // Corrected movie names mapping
+        const nameCorrections = {
+            "Tojo$@toyy": "Toy Story",
+            "Tojo$@toyy22": "Toy Story 2",
+            "Tojo$@toyy33": "Toy Story 3",
+            "FiriditigdNemo": "Finding Nemo",
+            "IrisisleO0ut": "Inside Out",
+            "Ratataouille": "Ratatouille",
+            "Udp": "Up",
+            "VWALLEE": "WALL-E",
+            "Tfhednoredtibies": "The Incredibles",
+            "Tojo$@toyy44": "Toy Story 4",
+            "S8oul": "Soul",
+            "Mhostaershipc.": "Monsters, Inc.",
+            "C6ooo": "Coco",
+            "FiriditigD0oyy": "Finding Dory",
+            "Inoredtibies22": "Incredibles 2",
+            "AABbys'& Iife": "A Bug's Life",
+            "C8ars": "Cars",
+            "BBrave": "Brave",
+            "C0twardd": "Onward",
+            "MostaersJuliversity": "Monsters University",
+            "TfhedGodD0ioeearr": "The Good Dinosaur",
+            "C8as3": "Cars 3",
+            "C8as22": "Cars 2",
+            "Luoaa": "Luca",
+            "TurningRedd": "Turning Red",
+            "Lightyear": "Lightyear"
+        };
+
+        // Load and merge data
+        Promise.all([
+            d3.csv("pixar_films.csv"),
+            d3.csv("public_response.csv")
+        ]).then(function(files) {
+            let filmsData = files[0];
+            const ratingsData = files[1];
+            
+            // Correct film names in the data
+            filmsData = filmsData.map(film => {
+                return {
+                    ...film,
+                    film: nameCorrections[film.film] || film.film
+                };
+            });
+            
+            // Merge datasets
+            const mergedData = filmsData.map(film => {
+                const correctedName = nameCorrections[film.film] || film.film;
+                const ratingInfo = ratingsData.find(r => nameCorrections[r.film] === correctedName || r.film === correctedName);
+                return {
+                    ...film,
+                    film: correctedName,
+                    rotten_tomatoes: ratingInfo ? +ratingInfo.rotten_tomatoes : null,
+                    metacritic: ratingInfo ? +ratingInfo.metacritic : null,
+                    critics_choice: ratingInfo ? +ratingInfo.critics_choice : null,
+                    cinema_score: ratingInfo ? ratingInfo.cinema_score : null,
+                    release_year: new Date(film.release_date).getFullYear(),
+                    run_time: film.run_time === "NA" ? null : +film.run_time,
+                    franchise: getFranchise(correctedName)
+                };
+            }).filter(d => d.film && d.film !== "NA");
+            
+            function getFranchise(filmName) {
+                if (filmName.includes("Toy Story")) return "Toy Story";
+                if (filmName.includes("Cars")) return "Cars";
+                if (filmName.includes("Incredibles")) return "Incredibles";
+                if (filmName.includes("Finding")) return "Finding";
+                if (filmName.includes("Monsters")) return "Monsters";
+                return "Standalone";
+            }
+            
+            // Calculate average rating
+            mergedData.forEach(d => {
+                const ratings = [];
+                if (d.rotten_tomatoes) ratings.push(d.rotten_tomatoes);
+                if (d.metacritic) ratings.push(d.metacritic);
+                if (d.critics_choice) ratings.push(d.critics_choice);
+                d.average_rating = ratings.length ? d3.mean(ratings) : null;
+            });
+            
+            // Set up visualization with ample space
+            const margin = {top: 40, right: 200, bottom: 60, left: 300};
+            const width = 1300 - margin.left - margin.right;
+            const height = 850 - margin.top - margin.bottom;
+            
+            const svg = d3.select(".chart-svg")
+                .attr("width", width + margin.left + margin.right)
+                .attr("height", height + margin.top + margin.bottom)
+                .append("g")
+                .attr("transform", `translate(${margin.left},${margin.top})`);
+            
+            // Scales
+            const xScale = d3.scaleLinear()
+                .domain([0, 100])
+                .range([0, width]);
+            
+            const yScale = d3.scaleBand()
+                .range([0, height])
+                .padding(0.5);
+            
+            const runtimePosScale = d3.scaleLinear()
+                .domain([70, 160])
+                .range([0, 60]);
+            
+            const colorScale = d3.scaleSequential()
+                .domain(d3.extent(mergedData, d => d.release_year))
+                .interpolator(d3.interpolateBlues);
+            
+            // Axes
+            const xAxis = d3.axisBottom(xScale)
+                .tickValues(d3.range(0, 101, 10))
+                .tickFormat(d => `${d}%`);
+            
+            const yAxis = d3.axisLeft(yScale)
+                .tickSize(0);
+            
+            svg.append("g")
+                .attr("class", "x-axis")
+                .attr("transform", `translate(0,${height})`)
+                .call(xAxis);
+            
+            svg.append("g")
+                .attr("class", "y-axis");
+            
+            // Add axis labels
+            svg.append("text")
+                .attr("class", "axis-label")
+                .attr("x", width / 2)
+                .attr("y", height + margin.bottom - 10)
+                .attr("text-anchor", "middle")
+                .text("Average Rating (%)");
+            
+            // Tooltip
+            const tooltip = d3.select(".tooltip");
+            
+            // Update function
+            function update(data, highlightFranchise = null) {
+                // Update y scale domain based on sorted data
+                yScale.domain(data.map(d => d.film));
+                
+                // Update y axis with proper text anchoring
+                svg.select(".y-axis")
+                    .transition()
+                    .duration(500)
+                    .call(yAxis)
+                    .selectAll("text")
+                    .attr("font-size", "12px")
+                    .attr("text-anchor", "end")
+                    .attr("dx", "-10px");
+                
+                // Join data for bars
+                const bars = svg.selectAll(".bar")
+                    .data(data, d => d.film);
+                
+                // Enter + Update
+                bars.enter()
+                    .append("rect")
+                    .attr("class", "bar")
+                    .attr("x", 0)
+                    .attr("y", d => yScale(d.film))
+                    .attr("height", yScale.bandwidth())
+                    .attr("width", d => xScale(d.average_rating))
+                    .attr("fill", d => colorScale(d.release_year))
+                    .attr("opacity", 0.8)
+                    .on("mouseover", function(event, d) {
+                        d3.select(this).attr("class", "bar highlight");
+                        
+                        const ratingHtml = d.average_rating ? 
+                            `<div><strong>Average Rating:</strong> ${d.average_rating.toFixed(1)}%</div>
+                             <div><strong>Rotten Tomatoes:</strong> ${d.rotten_tomatoes || 'NA'}%</div>
+                             <div><strong>Metacritic:</strong> ${d.metacritic || 'NA'}/100</div>
+                             <div><strong>Critics Choice:</strong> ${d.critics_choice || 'NA'}/100</div>
+                             <div><strong>CinemaScore:</strong> ${d.cinema_score || 'NA'}</div>` :
+                            `<div>Rating data not available</div>`;
+                        
+                        tooltip.html(`
+                            <div><strong>${d.film}</strong></div>
+                            <div><strong>Release Year:</strong> ${d.release_year}</div>
+                            <div><strong>Run Time:</strong> ${d.run_time || 'NA'} minutes</div>
+                            <div class="film-rating rating-${d.film_rating}"><strong>Rating:</strong> ${d.film_rating || 'NA'}</div>
+                            ${ratingHtml}
+                        `)
+                        .style("left", (event.pageX + 10) + "px")
+                        .style("top", (event.pageY - 10) + "px")
+                        .style("opacity", 1);
+                    })
+                    .on("mouseout", function() {
+                        d3.select(this).attr("class", "bar");
+                        tooltip.style("opacity", 0);
+                    })
+                    .on("mousemove", function(event) {
+                        tooltip
+                            .style("left", (event.pageX + 10) + "px")
+                            .style("top", (event.pageY - 10) + "px");
+                    })
+                    .merge(bars)
+                    .transition()
+                    .duration(500)
+                    .attr("y", d => yScale(d.film))
+                    .attr("width", d => xScale(d.average_rating))
+                    .attr("height", yScale.bandwidth())
+                    .attr("fill", d => colorScale(d.release_year))
+                    .attr("opacity", d => {
+                        if (!highlightFranchise) return 0.8;
+                        return d.franchise === highlightFranchise ? 0.8 : 0.3;
+                    });
+                
+                // Add run time indicators as dashed lines
+                const runtimeMarks = svg.selectAll(".runtime-line")
+                    .data(data, d => d.film);
+                
+                runtimeMarks.enter()
+                    .append("line")
+                    .attr("class", "runtime-line")
+                    .attr("x1", d => xScale(d.average_rating) + 5)
+                    .attr("x2", d => xScale(d.average_rating) + 5 + runtimePosScale(d.run_time || 0))
+                    .attr("y1", d => yScale(d.film) + yScale.bandwidth() / 2)
+                    .attr("y2", d => yScale(d.film) + yScale.bandwidth() / 2)
+                    .merge(runtimeMarks)
+                    .transition()
+                    .duration(500)
+                    .attr("x1", d => xScale(d.average_rating) + 5)
+                    .attr("x2", d => xScale(d.average_rating) + 5 + runtimePosScale(d.run_time || 0))
+                    .attr("y1", d => yScale(d.film) + yScale.bandwidth() / 2)
+                    .attr("y2", d => yScale(d.film) + yScale.bandwidth() / 2)
+                    .attr("opacity", d => {
+                        if (!highlightFranchise) return 1;
+                        return d.franchise === highlightFranchise ? 1 : 0.3;
+                    });
+                
+                // Add runtime labels on the right side
+                const runtimeLabels = svg.selectAll(".runtime-label")
+                    .data(data, d => d.film);
+                
+                runtimeLabels.enter()
+                    .append("text")
+                    .attr("class", "runtime-label")
+                    .attr("x", width + 15)
+                    .attr("y", d => yScale(d.film) + yScale.bandwidth() / 2 + 4)
+                    .text(d => d.run_time ? `${d.run_time}m` : 'NA')
+                    .merge(runtimeLabels)
+                    .transition()
+                    .duration(500)
+                    .attr("y", d => yScale(d.film) + yScale.bandwidth() / 2 + 4)
+                    .attr("opacity", d => {
+                        if (!highlightFranchise) return 1;
+                        return d.franchise === highlightFranchise ? 1 : 0.3;
+                    });
+                
+                // Exit
+                bars.exit().remove();
+                runtimeMarks.exit().remove();
+                runtimeLabels.exit().remove();
+                
+                // Add film names as labels on the left
+                const labels = svg.selectAll(".film-label")
+                    .data(data, d => d.film);
+                
+                labels.enter()
+                    .append("text")
+                    .attr("class", "film-label")
+                    .attr("x", -15)
+                    .attr("y", d => yScale(d.film) + yScale.bandwidth() / 2)
+                    .attr("dy", "0.35em")
+                    .attr("text-anchor", "end")
+                    .text(d => d.film)
+                    .attr("font-size", "12px")
+                    .attr("font-weight", d => {
+                        if (!highlightFranchise) return "normal";
+                        return d.franchise === highlightFranchise ? "bold" : "normal";
+                    })
+                    .merge(labels)
+                    .transition()
+                    .duration(500)
+                    .attr("y", d => yScale(d.film) + yScale.bandwidth() / 2)
+                    .attr("font-weight", d => {
+                        if (!highlightFranchise) return "normal";
+                        return d.franchise === highlightFranchise ? "bold" : "normal";
+                    });
+                
+                labels.exit().remove();
+            }
+            
+            // Initial render
+            update(mergedData.sort((a, b) => b.average_rating - a.average_rating));
+            
+            // Event listeners for controls
+            d3.select("#sort-by").on("change", function() {
+                const sortBy = this.value;
+                let sortedData = [...mergedData];
+                
+                switch(sortBy) {
+                    case "name":
+                        sortedData.sort((a, b) => a.film.localeCompare(b.film));
+                        break;
+                    case "year":
+                        sortedData.sort((a, b) => a.release_year - b.release_year);
+                        break;
+                    case "runtime":
+                        sortedData.sort((a, b) => (a.run_time || 0) - (b.run_time || 0));
+                        break;
+                    case "average":
+                    default:
+                        sortedData.sort((a, b) => (b.average_rating || 0) - (a.average_rating || 0));
+                }
+                
+                update(sortedData, d3.select(".franchise-btn.active").attr("data-franchise"));
+            });
+            
+            d3.select("#filter-year").on("input", function() {
+                const year = +this.value;
+                d3.select("#year-value").text(`${year}-2023`);
+                
+                const filteredData = mergedData.filter(d => d.release_year >= year);
+                update(filteredData, d3.select(".franchise-btn.active").attr("data-franchise"));
+            });
+            
+            d3.select("#filter-rating").on("change", function() {
+                const rating = this.value;
+                let filteredData = [...mergedData];
+                
+                if (rating !== "all") {
+                    filteredData = mergedData.filter(d => d.film_rating === rating);
+                }
+                
+                update(filteredData, d3.select(".franchise-btn.active").attr("data-franchise"));
+            });
+            
+            // Franchise highlighting
+            d3.selectAll(".franchise-btn").on("click", function() {
+                d3.selectAll(".franchise-btn").classed("active", false);
+                d3.select(this).classed("active", true);
+                
+                const franchise = this.getAttribute("data-franchise");
+                if (franchise === "none") {
+                    update(mergedData);
+                } else {
+                    update(mergedData, franchise);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
