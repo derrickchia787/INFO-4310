@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pixar Film Ratings - No Overlapping</title>
+    <title>Pixar Film Ratings - Final Version</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <style>
         body {
@@ -12,7 +12,7 @@
             background-color: #f8f8f8;
         }
         .container {
-            max-width: 1400px;
+            max-width: 1200px;
             margin: 0 auto;
             background-color: white;
             padding: 20px;
@@ -171,11 +171,11 @@
             <div class="franchise-btn" data-franchise="Incredibles">Incredibles</div>
             <div class="franchise-btn" data-franchise="Finding">Finding Nemo/Dory</div>
             <div class="franchise-btn" data-franchise="Monsters">Monsters</div>
-            <div class="franchise-btn" data-franchise="none">None</div>
+            <div class="franchise-btn active" data-franchise="none">None</div>
         </div>
         
         <div class="chart-container">
-            <svg class="chart-svg" width="1300" height="850"></svg>
+            <svg class="chart-svg" width="1100" height="600"></svg>
         </div>
         
         <div class="legend">
@@ -214,7 +214,7 @@
     <div class="tooltip"></div>
     
     <script>
-        // Corrected movie names mapping
+        // Correct movie names mapping
         const nameCorrections = {
             "Tojo$@toyy": "Toy Story",
             "Tojo$@toyy22": "Toy Story 2",
@@ -295,10 +295,10 @@
                 d.average_rating = ratings.length ? d3.mean(ratings) : null;
             });
             
-            // Set up visualization with ample space
-            const margin = {top: 40, right: 200, bottom: 60, left: 300};
-            const width = 1300 - margin.left - margin.right;
-            const height = 850 - margin.top - margin.bottom;
+            // Set up visualization with proper spacing
+            const margin = {top: 40, right: 150, bottom: 60, left: 200};
+            const width = 1100 - margin.left - margin.right;
+            const height = Math.max(600, mergedData.length * 25); // Dynamic height based on number of films
             
             const svg = d3.select(".chart-svg")
                 .attr("width", width + margin.left + margin.right)
@@ -313,11 +313,11 @@
             
             const yScale = d3.scaleBand()
                 .range([0, height])
-                .padding(0.5);
+                .padding(0.3);
             
             const runtimePosScale = d3.scaleLinear()
                 .domain([70, 160])
-                .range([0, 60]);
+                .range([0, 80]);
             
             const colorScale = d3.scaleSequential()
                 .domain(d3.extent(mergedData, d => d.release_year))
@@ -350,27 +350,72 @@
             // Tooltip
             const tooltip = d3.select(".tooltip");
             
+            // Current filter state
+            let currentFilters = {
+                year: 1995,
+                rating: "all",
+                franchise: "none",
+                sort: "average"
+            };
+            
+            // Apply all filters and sorting
+            function applyFilters() {
+                let filteredData = [...mergedData];
+                
+                // Apply year filter
+                filteredData = filteredData.filter(d => d.release_year >= currentFilters.year);
+                
+                // Apply rating filter
+                if (currentFilters.rating !== "all") {
+                    filteredData = filteredData.filter(d => d.film_rating === currentFilters.rating);
+                }
+                
+                // Apply franchise highlighting (just changes opacity)
+                const highlightFranchise = currentFilters.franchise === "none" ? null : currentFilters.franchise;
+                
+                // Apply sorting
+                switch(currentFilters.sort) {
+                    case "name":
+                        filteredData.sort((a, b) => a.film.localeCompare(b.film));
+                        break;
+                    case "year":
+                        filteredData.sort((a, b) => a.release_year - b.release_year);
+                        break;
+                    case "runtime":
+                        filteredData.sort((a, b) => (a.run_time || 0) - (b.run_time || 0));
+                        break;
+                    case "average":
+                    default:
+                        filteredData.sort((a, b) => (b.average_rating || 0) - (a.average_rating || 0));
+                }
+                
+                update(filteredData, highlightFranchise);
+            }
+            
             // Update function
             function update(data, highlightFranchise = null) {
                 // Update y scale domain based on sorted data
                 yScale.domain(data.map(d => d.film));
                 
-                // Update y axis with proper text anchoring
+                // Clear previous elements to prevent duplication
+                svg.selectAll(".bar").remove();
+                svg.selectAll(".runtime-line").remove();
+                svg.selectAll(".runtime-label").remove();
+                svg.selectAll(".film-label").remove();
+                
+                // Update y axis
                 svg.select(".y-axis")
                     .transition()
                     .duration(500)
                     .call(yAxis)
                     .selectAll("text")
                     .attr("font-size", "12px")
-                    .attr("text-anchor", "end")
-                    .attr("dx", "-10px");
+                    .attr("text-anchor", "end");
                 
-                // Join data for bars
-                const bars = svg.selectAll(".bar")
-                    .data(data, d => d.film);
-                
-                // Enter + Update
-                bars.enter()
+                // Create bars
+                svg.selectAll(".bar")
+                    .data(data)
+                    .enter()
                     .append("rect")
                     .attr("class", "bar")
                     .attr("x", 0)
@@ -378,7 +423,7 @@
                     .attr("height", yScale.bandwidth())
                     .attr("width", d => xScale(d.average_rating))
                     .attr("fill", d => colorScale(d.release_year))
-                    .attr("opacity", 0.8)
+                    .attr("opacity", d => highlightFranchise ? (d.franchise === highlightFranchise ? 0.8 : 0.3) : 0.8)
                     .on("mouseover", function(event, d) {
                         d3.select(this).attr("class", "bar highlight");
                         
@@ -409,151 +454,58 @@
                         tooltip
                             .style("left", (event.pageX + 10) + "px")
                             .style("top", (event.pageY - 10) + "px");
-                    })
-                    .merge(bars)
-                    .transition()
-                    .duration(500)
-                    .attr("y", d => yScale(d.film))
-                    .attr("width", d => xScale(d.average_rating))
-                    .attr("height", yScale.bandwidth())
-                    .attr("fill", d => colorScale(d.release_year))
-                    .attr("opacity", d => {
-                        if (!highlightFranchise) return 0.8;
-                        return d.franchise === highlightFranchise ? 0.8 : 0.3;
                     });
                 
                 // Add run time indicators as dashed lines
-                const runtimeMarks = svg.selectAll(".runtime-line")
-                    .data(data, d => d.film);
-                
-                runtimeMarks.enter()
+                svg.selectAll(".runtime-line")
+                    .data(data)
+                    .enter()
                     .append("line")
                     .attr("class", "runtime-line")
                     .attr("x1", d => xScale(d.average_rating) + 5)
                     .attr("x2", d => xScale(d.average_rating) + 5 + runtimePosScale(d.run_time || 0))
                     .attr("y1", d => yScale(d.film) + yScale.bandwidth() / 2)
                     .attr("y2", d => yScale(d.film) + yScale.bandwidth() / 2)
-                    .merge(runtimeMarks)
-                    .transition()
-                    .duration(500)
-                    .attr("x1", d => xScale(d.average_rating) + 5)
-                    .attr("x2", d => xScale(d.average_rating) + 5 + runtimePosScale(d.run_time || 0))
-                    .attr("y1", d => yScale(d.film) + yScale.bandwidth() / 2)
-                    .attr("y2", d => yScale(d.film) + yScale.bandwidth() / 2)
-                    .attr("opacity", d => {
-                        if (!highlightFranchise) return 1;
-                        return d.franchise === highlightFranchise ? 1 : 0.3;
-                    });
+                    .attr("opacity", d => highlightFranchise ? (d.franchise === highlightFranchise ? 1 : 0.3) : 1);
                 
                 // Add runtime labels on the right side
-                const runtimeLabels = svg.selectAll(".runtime-label")
-                    .data(data, d => d.film);
-                
-                runtimeLabels.enter()
+                svg.selectAll(".runtime-label")
+                    .data(data)
+                    .enter()
                     .append("text")
                     .attr("class", "runtime-label")
-                    .attr("x", width + 15)
+                    .attr("x", width + 10)
                     .attr("y", d => yScale(d.film) + yScale.bandwidth() / 2 + 4)
                     .text(d => d.run_time ? `${d.run_time}m` : 'NA')
-                    .merge(runtimeLabels)
-                    .transition()
-                    .duration(500)
-                    .attr("y", d => yScale(d.film) + yScale.bandwidth() / 2 + 4)
-                    .attr("opacity", d => {
-                        if (!highlightFranchise) return 1;
-                        return d.franchise === highlightFranchise ? 1 : 0.3;
-                    });
-                
-                // Exit
-                bars.exit().remove();
-                runtimeMarks.exit().remove();
-                runtimeLabels.exit().remove();
-                
-                // Add film names as labels on the left
-                const labels = svg.selectAll(".film-label")
-                    .data(data, d => d.film);
-                
-                labels.enter()
-                    .append("text")
-                    .attr("class", "film-label")
-                    .attr("x", -15)
-                    .attr("y", d => yScale(d.film) + yScale.bandwidth() / 2)
-                    .attr("dy", "0.35em")
-                    .attr("text-anchor", "end")
-                    .text(d => d.film)
-                    .attr("font-size", "12px")
-                    .attr("font-weight", d => {
-                        if (!highlightFranchise) return "normal";
-                        return d.franchise === highlightFranchise ? "bold" : "normal";
-                    })
-                    .merge(labels)
-                    .transition()
-                    .duration(500)
-                    .attr("y", d => yScale(d.film) + yScale.bandwidth() / 2)
-                    .attr("font-weight", d => {
-                        if (!highlightFranchise) return "normal";
-                        return d.franchise === highlightFranchise ? "bold" : "normal";
-                    });
-                
-                labels.exit().remove();
+                    .attr("opacity", d => highlightFranchise ? (d.franchise === highlightFranchise ? 1 : 0.3) : 1);
             }
             
             // Initial render
-            update(mergedData.sort((a, b) => b.average_rating - a.average_rating));
+            applyFilters();
             
             // Event listeners for controls
             d3.select("#sort-by").on("change", function() {
-                const sortBy = this.value;
-                let sortedData = [...mergedData];
-                
-                switch(sortBy) {
-                    case "name":
-                        sortedData.sort((a, b) => a.film.localeCompare(b.film));
-                        break;
-                    case "year":
-                        sortedData.sort((a, b) => a.release_year - b.release_year);
-                        break;
-                    case "runtime":
-                        sortedData.sort((a, b) => (a.run_time || 0) - (b.run_time || 0));
-                        break;
-                    case "average":
-                    default:
-                        sortedData.sort((a, b) => (b.average_rating || 0) - (a.average_rating || 0));
-                }
-                
-                update(sortedData, d3.select(".franchise-btn.active").attr("data-franchise"));
+                currentFilters.sort = this.value;
+                applyFilters();
             });
             
             d3.select("#filter-year").on("input", function() {
-                const year = +this.value;
-                d3.select("#year-value").text(`${year}-2023`);
-                
-                const filteredData = mergedData.filter(d => d.release_year >= year);
-                update(filteredData, d3.select(".franchise-btn.active").attr("data-franchise"));
+                currentFilters.year = +this.value;
+                d3.select("#year-value").text(`${currentFilters.year}-2023`);
+                applyFilters();
             });
             
             d3.select("#filter-rating").on("change", function() {
-                const rating = this.value;
-                let filteredData = [...mergedData];
-                
-                if (rating !== "all") {
-                    filteredData = mergedData.filter(d => d.film_rating === rating);
-                }
-                
-                update(filteredData, d3.select(".franchise-btn.active").attr("data-franchise"));
+                currentFilters.rating = this.value;
+                applyFilters();
             });
             
             // Franchise highlighting
             d3.selectAll(".franchise-btn").on("click", function() {
                 d3.selectAll(".franchise-btn").classed("active", false);
                 d3.select(this).classed("active", true);
-                
-                const franchise = this.getAttribute("data-franchise");
-                if (franchise === "none") {
-                    update(mergedData);
-                } else {
-                    update(mergedData, franchise);
-                }
+                currentFilters.franchise = this.getAttribute("data-franchise");
+                applyFilters();
             });
         });
     </script>
