@@ -1,0 +1,1961 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tipping Point: The Growing Divide Between Minimum Wage and Cost of Living</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/topojson@3"></script>
+    <style>
+        body {
+            font-family: 'Georgia', serif;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.8;
+            color: #333;
+            background-color: #fafafa;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 30px;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-weight: 700;
+        }
+
+        h2 {
+            font-size: 1.8em;
+            color: #2980b9;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+
+        h3 {
+            font-size: 1.4em;
+            color: #16a085;
+            margin-top: 30px;
+        }
+
+        p {
+            font-size: 1.1em;
+            margin-bottom: 20px;
+        }
+
+        .intro {
+            font-size: 1.2em;
+            line-height: 1.9;
+            color: #444;
+        }
+
+        .byline {
+            font-style: italic;
+            color: #7f8c8d;
+            margin-bottom: 30px;
+        }
+
+        section {
+            margin-bottom: 50px;
+            padding: 25px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .visualization-container {
+            margin: 30px 0;
+        }
+
+        .map-container,
+        .chart-container {
+            position: relative;
+            margin: 30px auto;
+            display: flex;
+            justify-content: center;
+            text-align: center;
+            width: 100%;
+            overflow: visible;
+        }
+
+        .tooltip {
+            position: absolute;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.85);
+            color: white;
+            border-radius: 5px;
+            pointer-events: none;
+            font-size: 14px;
+            max-width: 300px;
+            line-height: 1.5;
+        }
+
+        .bar {
+            fill: #3498db;
+            transition: fill 0.3s;
+        }
+
+        .bar:hover {
+            fill: #2980b9;
+        }
+
+        .axis text {
+            font-size: 12px;
+            font-family: 'Arial', sans-serif;
+        }
+
+        .axis-label {
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .pie-arc path {
+            stroke: #fff;
+            stroke-width: 1px;
+            transition: opacity 0.3s;
+        }
+
+        .pie-label {
+            font-size: 12px;
+            fill: #333;
+        }
+
+        .pie-label-outside {
+            font-size: 10px;
+            fill: #333;
+            text-anchor: middle;
+            font-weight: 500;
+            pointer-events: none;
+        }
+
+        .pie-line {
+            stroke: #777;
+            stroke-width: 1;
+            fill: none;
+            opacity: 0.6;
+        }
+
+        .pie-arc:hover path {
+            opacity: 0.8;
+        }
+
+        select,
+        button {
+            padding: 10px 12px;
+            font-size: 16px;
+            margin-bottom: 20px;
+            margin-right: 15px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            font-family: 'Arial', sans-serif;
+        }
+
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            padding: 10px 20px;
+        }
+
+        button:hover {
+            background-color: #2980b9;
+        }
+
+        .filter-container {
+            background-color: #ecf0f1;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+        }
+
+        .filter-group {
+            display: inline-block;
+            margin-right: 25px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        #budget-results {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #3498db;
+        }
+
+        #budget-pie {
+            display: block;
+            margin: 0 auto;
+        }
+
+        footer {
+            margin-top: 60px;
+            padding: 30px 0;
+            text-align: center;
+            font-size: 14px;
+            color: #7f8c8d;
+            border-top: 1px solid #eee;
+        }
+
+        .highlight {
+            stroke: #333;
+            stroke-width: 2px;
+        }
+
+
+        .legend-title {
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .diverging-legend {
+            font-size: 10px;
+        }
+
+        .callout {
+            background-color: #f8f9fa;
+            border-left: 4px solid #3498db;
+            padding: 20px;
+            margin: 30px 0;
+            border-radius: 0 4px 4px 0;
+        }
+
+        .callout h3 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+
+        .data-source {
+            font-size: 0.9em;
+            color: #7f8c8d;
+            margin-top: 10px;
+        }
+
+        .figure-caption {
+            font-size: 0.9em;
+            color: #7f8c8d;
+            text-align: center;
+            margin-top: 5px;
+            margin-bottom: 15px;
+        }
+
+        .analysis {
+            background-color: #f8f9fa;
+            padding: 25px;
+            border-radius: 8px;
+            margin: 30px 0;
+        }
+
+        .analysis h3 {
+            color: #2c3e50;
+            margin-top: 0;
+        }
+
+        .key-finding {
+            font-weight: bold;
+            color: #2980b9;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            font-style: italic;
+            color: #7f8c8d;
+        }
+
+        .state-path {
+            transition: fill 0.3s, stroke-width 0.3s;
+        }
+
+        .tooltip-row span.tooltip-value {
+            color: #2980b9;
+            font-weight: normal;
+        }
+
+        .legend-border {
+            fill: rgba(255, 255, 255, 0.8);
+            stroke: #ddd;
+            stroke-width: 1;
+            rx: 4;
+            ry: 4;
+        }
+
+        .tooltip-notes {
+            margin-top: 8px;
+            font-size: 0.9em;
+            color: #ddd;
+        }
+
+        .reset-zoom {
+            padding: 5px 10px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        .reset-zoom:hover {
+            background: #2980b9;
+        }
+
+        /* State abbreviations */
+        .state-label {
+            font-size: 8px;
+            font-weight: bold;
+            fill: #333;
+            text-shadow: 0 0 2px white, 0 0 2px white, 0 0 2px white;
+        }
+
+        .legend-axis line {
+            stroke: #999;
+            stroke-width: 0.5;
+        }
+
+        /* Improved state labels */
+        .state-label {
+            font-size: 8px;
+            font-weight: bold;
+            fill: #333;
+            text-shadow:
+                -1px -1px 0 #fff,
+                1px -1px 0 #fff,
+                -1px 1px 0 #fff,
+                1px 1px 0 #fff;
+            pointer-events: none;
+        }
+
+        /* Selected state style */
+        .selected-state {
+            stroke: #333 !important;
+            stroke-width: 2px !important;
+            filter: drop-shadow(0 0 3px rgba(0, 0, 0, 0.3));
+        }
+
+        /* Tooltip improvements */
+        .tooltip-header {
+            font-weight: bold;
+            font-size: 1.1em;
+            margin-bottom: 8px;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 5px;
+        }
+
+        .tooltip-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+
+        .tooltip-label {
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        .tooltip-value {
+            color: #2980b9;
+        }
+
+        .persistent-tooltip {
+            background: rgba(0, 0, 0, 0.85);
+            color: white;
+            padding: 12px;
+            border-radius: 5px;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .legend-axis path {
+            stroke: #999;
+        }
+
+        .legend-title {
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .info-panel {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            font-size: 14px;
+            line-height: 1.5;
+            border: 1px solid #ddd;
+            position: absolute;
+            z-index: 10;
+            pointer-events: none;
+            max-width: 250px;
+        }
+
+        .info-header {
+            font-weight: bold;
+            font-size: 16px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+            color: #2c3e50;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+
+        .info-label {
+            font-weight: bold;
+            margin-right: 10px;
+            color: #333;
+        }
+
+        .info-value {
+            color: #2980b9;
+            font-weight: normal;
+        }
+
+        .info-notes {
+            margin-top: 10px;
+            font-size: 12px;
+            color: #666;
+            line-height: 1.4;
+        }
+
+        #wage-amount {
+            padding: 8px 10px;
+            width: 80px;
+            margin-right: 10px;
+        }
+
+        #apply-filter {
+            margin-left: 10px;
+        }
+
+        .non-matching-state {
+            fill: #f5f5f5 !important;
+            stroke: #ddd !important;
+            opacity: 0.5;
+        }
+
+        .bar-value {
+            fill: #2c3e50;
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            font-weight: bold;
+            pointer-events: none;
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <h1>Tipping Point: The Growing Divide Between Minimum Wage and Cost of Living</h1>
+        <div class="byline">By Derrick Chia | INFO4310 Final Project | May 2023</div>
+        <p class="intro">
+            In the United States, the federal minimum wage has remained frozen at $7.25 per hour since 2009—the longest
+            period without an increase since the minimum wage was established in 1938. Meanwhile, the cost of living has
+            risen steadily, creating a growing gap between what workers earn and what they need to survive. This
+            interactive article explores how minimum wage laws vary across states, how they compare to actual living
+            costs, and what this means for American workers and families.
+        </p>
+    </header>
+
+    <section id="divide">
+        <h2>The Stagnant Wage Floor</h2>
+        <p>
+            The federal minimum wage was first introduced during the Great Depression as part of the Fair Labor
+            Standards Act of 1938. Initially set at $0.25 per hour (about $4.60 in today's dollars), it was designed to
+            establish a baseline standard of living for American workers. Over the next several decades, the minimum
+            wage generally kept pace with inflation and productivity gains, peaking in inflation-adjusted value in 1968
+            at approximately $12 per hour in today's dollars.
+        </p>
+
+        <div class="analysis">
+            <h3>Key Finding: The Erosion of Purchasing Power</h3>
+            <p>
+                <span class="key-finding">If the 1968 minimum wage had kept pace with inflation, it would be over $12
+                    today.</span> Instead, at $7.25, today's federal minimum wage has lost nearly 40% of its purchasing
+                power. This erosion has occurred while worker productivity has more than doubled, meaning minimum wage
+                workers today are contributing more to the economy while earning significantly less in real terms.
+            </p>
+        </div>
+
+        <p>
+            The consequences of this stagnation are profound. A full-time worker earning the federal minimum wage makes
+            just $15,080 annually—below the poverty line for a family of two. In high-cost areas, this income might not
+            even cover rent for a one-bedroom apartment, forcing workers to make impossible choices between necessities
+            like food, healthcare, and utilities.
+        </p>
+
+        <div class="callout">
+            <h3>Why Hasn't the Minimum Wage Kept Up?</h3>
+            <p>
+                Several factors contribute to the stagnation of the federal minimum wage:
+            </p>
+            <ul>
+                <li><strong>Political gridlock:</strong> Minimum wage increases require Congressional approval, which
+                    has become increasingly difficult amid partisan divides.</li>
+                <li><strong>Lobbying efforts:</strong> Business groups argue that higher wages would lead to job losses,
+                    despite research showing modest effects on employment.</li>
+                <li><strong>State-level action:</strong> With federal action stalled, many states have taken matters
+                    into their own hands, creating a patchwork of wage laws.</li>
+            </ul>
+        </div>
+    </section>
+
+    <section id="map">
+        <h2>The State of Minimum Wages</h2>
+        <p>
+            In the absence of federal action, many states and cities have implemented their own minimum wage laws. As of
+            2025, many states have minimum wages above the federal floor, with some like California and Washington
+            exceeding $15 per hour. However, some states still default to the federal minimum of $7.25, primarily in the
+            South and Midwest.
+        </p>
+
+        <div class="filter-container">
+            <div class="filter-group">
+                <label for="wage-comparison">Show states where minimum wage is:</label>
+                <select id="wage-comparison">
+                    <option value="greater">Greater than or equal to</option>
+                    <option value="less">Less than or equal to</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="wage-amount">Amount ($):</label>
+                <input type="number" id="wage-amount" min="0" max="20" step="0.25" value="7.25">
+            </div>
+            <button id="apply-filter">Apply</button>
+        </div>
+
+        <div class="visualization-container">
+            <div class="loading" id="map-loading">Loading minimum wage data...</div>
+            <div class="map-container">
+                <svg id="choropleth" width="960" height="600"></svg>
+                <div class="tooltip" style="opacity: 0;"></div>
+                <div id="state-info-panel" class="info-panel" style="display: none;"></div>
+            </div>
+            <div class="figure-caption">
+                Figure 1: State minimum wage laws vary significantly across the country. Explore how wages compare to
+                living wages for different household types.
+            </div>
+        </div>
+
+        <div class="analysis">
+            <h3>Key Finding: The Geographic Divide</h3>
+            <p>
+                <span class="key-finding">The map reveals a stark geographic divide in wage policies.</span> States on
+                the West Coast and Northeast generally have higher minimum wages, while Southern states overwhelmingly
+                rely on the federal minimum. This regional disparity means that low-wage workers' purchasing power
+                varies dramatically depending on where they live.
+            </p>
+        </div>
+
+        <div class="callout">
+            <h3>What Constitutes a Living Wage?</h3>
+            <p>
+                A living wage is the minimum income necessary for a worker to meet their basic needs in a given
+                community. Unlike the minimum wage, which is set by law, living wages are calculated based on actual
+                costs of:
+            </p>
+            <ul>
+                <li>Housing (typically the largest expense)</li>
+                <li>Food and groceries</li>
+                <li>Healthcare</li>
+                <li>Transportation</li>
+                <li>Other necessities (clothing, personal care, etc.)</li>
+            </ul>
+            <p>
+                The gap between minimum wages and living wages shows how far earnings fall short of actual needs.
+            </p>
+        </div>
+    </section>
+
+    <section id="bar-chart">
+        <h2>State-by-State Minimum Wage Comparison</h2>
+        <p>
+            The interactive bar chart below allows you to explore how states compare on minimum wage levels and how
+            these wages measure up against living costs for different household types. Use the dropdown to sort by
+            different criteria and gain new perspectives on the data.
+        </p>
+
+        <div class="filter-container">
+            <div class="filter-group">
+                <label for="sort-by">Sort By:</label>
+                <select id="sort-by">
+                    <option value="wage">Minimum Wage</option>
+                    <option value="gap">Gap from Living Wage</option>
+                    <option value="state">State Name</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="visualization-container">
+            <div class="loading" id="bar-loading">Loading minimum wage data...</div>
+            <div class="chart-container">
+                <svg id="barchart" width="960" height="860"></svg>
+            </div>
+            <div class="figure-caption">
+                Figure 2: State-by-state comparison of minimum wage levels. The red dashed line indicates the federal
+                minimum wage of $7.25. States in blue have their own minimum wage laws, while gray states use the
+                federal minimum.
+            </div>
+        </div>
+
+        <div class="analysis">
+            <h3>Key Finding</h3>
+            <p>
+                <span class="key-finding">Several states have reached or surpassed the $15 minimum wage
+                    benchmark,</span> long advocated by labor groups as a more realistic floor. As of 2025, many states
+                have implemented $15 minimum wages or higher, with others following soon.
+            </p>
+            <p>
+                However, our data shows that even $15 may not be sufficient in high-cost areas, particularly for
+                families. When sorting by "Gap from Living Wage" and selecting family household types, we see that no
+                state's minimum wage fully covers estimated living costs for families with children.
+            </p>
+        </div>
+
+        <div class="callout">
+            <h3>What the Research Says</h3>
+            <p>
+                Economic research on minimum wage increases shows:
+            </p>
+            <ul>
+                <li><strong>Modest employment effects:</strong> A landmark 2019 study in the Quarterly Journal of
+                    Economics found no significant job losses following minimum wage increases in major cities.</li>
+                <li><strong>Reduced poverty:</strong> The Congressional Budget Office estimates that a $15 minimum wage
+                    by 2025 would lift 900,000 people out of poverty.</li>
+                <li><strong>Economic stimulus:</strong> Low-wage workers spend nearly all their income, creating a
+                    multiplier effect in local economies.</li>
+            </ul>
+        </div>
+    </section>
+
+    <section id="calculator">
+        <h2>The Reality for Minimum Wage Workers</h2>
+        <p>
+            How far does minimum wage actually go in covering basic expenses? The calculator below lets you explore
+            different scenarios by state, household type, and work hours. The results show the harsh realities many
+            workers face when trying to make ends meet on minimum wage earnings.
+        </p>
+
+        <div class="filter-container">
+            <div class="filter-group">
+                <label for="state-select">State:</label>
+                <select id="state-select"></select>
+            </div>
+            <div class="filter-group">
+                <label for="household-calc">Household Type:</label>
+                <select id="household-calc">
+                    <option value="single">Single Adult</option>
+                    <option value="single_child">Single Adult with One Child</option>
+                    <option value="two_adults">Two Adults (both Working)</option>
+                    <option value="two_adults_one_working">Two Adults (one Working)</option>
+                    <option value="two_adults_two_children">Two Adults with Two Children (both working)</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="hours-per-week">Hours/Week:</label>
+                <select id="hours-per-week">
+                    <option value="40">40 (Full-time)</option>
+                    <option value="30">30</option>
+                    <option value="20">20 (Part-time)</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="budget-results">
+            <div class="loading" id="calc-loading">Loading calculator data...</div>
+            <h3>Budget Breakdown</h3>
+            <p id="income"></p>
+            <p id="expenses"></p>
+            <p id="surplus-deficit"></p>
+            <div class="chart-container" style="text-align: center;">
+                <svg id="budget-pie" width="900" height="300"></svg>
+            </div>
+            <div class="figure-caption">
+                Figure 3: Budget breakdown showing how minimum wage income compares to estimated expenses. Red indicates
+                a deficit where expenses exceed income.
+            </div>
+        </div>
+
+        <div class="analysis">
+            <h3>Key Finding: The Impossible Budget</h3>
+            <p>
+                <span class="key-finding">In nearly all scenarios with children, minimum wage income fails to cover
+                    basic expenses.</span> Even single adults working full-time at minimum wage face significant budget
+                shortfalls in many states. The calculator reveals that:
+            </p>
+            <ul>
+                <li>Single parents almost universally face deficits, often substantial ones</li>
+                <li>Two-adult households with both working may fare better, but still struggle in high-cost states</li>
+                <li>Part-time workers face particularly dire circumstances</li>
+            </ul>
+            <p>
+                These shortfalls help explain why many minimum wage workers rely on public assistance programs like SNAP
+                (food stamps) and Medicaid, even while working full-time.
+            </p>
+
+            <p>
+                <span class="key-finding">The Part-Time Penalty:</span> Workers unable to secure full-time hours face
+                particularly dire circumstances, with part-time earnings covering only a fraction of basic needs. This
+                helps explain why many minimum wage workers rely on public assistance programs even while employed.
+            </p>
+        </div>
+
+        <div class="callout">
+            <h3>Policy Implications</h3>
+            <p>
+                The data reveals several important policy considerations:
+            </p>
+            <ul>
+                <li><strong>Regional Cost Differences:</strong> A single federal minimum wage may not account for
+                    significant variations in living costs across states and metropolitan areas.</li>
+                <li><strong>Automatic Adjustments:</strong> States that automatically adjust their minimum wages for
+                    inflation have been more successful at maintaining workers' purchasing power.</li>
+                <li><strong>Family Support:</strong> The severe gaps for households with children suggest a need for
+                    complementary policies like childcare assistance and earned income tax credits.</li>
+            </ul>
+        </div>
+    </section>
+
+    <footer>
+        <p>Data Sources:</p>
+        <ul>
+            <li>Projected 2025 minimum wages based on current state laws and inflation adjustments. Source: <a href="https://www.epi.org/minimum-wage-tracker/" target="_blank">EPI Minimum Wage Tracker</a></li>
+            <li>Living wage estimates calculated using methodology from: <a href="https://livingwage.mit.edu/" target="_blank">MIT Living Wage Calculator</a> with adjustments for projected 2025 costs</li>
+        </ul>
+        <p>Created with D3.js | INFO4310 Final Project | May 2023</p>
+    </footer>
+
+    <script>
+        // Set up dimensions and margins
+        const margin = { top: 40, right: 20, bottom: 60, left: 150 };
+        const width = 960 - margin.left - margin.right;
+        const height = 600 - margin.top - margin.bottom;
+        const barHeight = 900 - margin.top - margin.bottom - 50;
+        const pieRadius = Math.min(300, 300) / 2;
+
+        const stateAbbreviations = {
+            "Alabama": "AL",
+            "Alaska": "AK",
+            "Arizona": "AZ",
+            "Arkansas": "AR",
+            "California": "CA",
+            "Colorado": "CO",
+            "Connecticut": "CT",
+            "Delaware": "DE",
+            "Florida": "FL",
+            "Georgia": "GA",
+            "Hawaii": "HI",
+            "Idaho": "ID",
+            "Illinois": "IL",
+            "Indiana": "IN",
+            "Iowa": "IA",
+            "Kansas": "KS",
+            "Kentucky": "KY",
+            "Louisiana": "LA",
+            "Maine": "ME",
+            "Maryland": "MD",
+            "Massachusetts": "MA",
+            "Michigan": "MI",
+            "Minnesota": "MN",
+            "Mississippi": "MS",
+            "Missouri": "MO",
+            "Montana": "MT",
+            "Nebraska": "NE",
+            "Nevada": "NV",
+            "New Hampshire": "NH",
+            "New Jersey": "NJ",
+            "New Mexico": "NM",
+            "New York": "NY",
+            "North Carolina": "NC",
+            "North Dakota": "ND",
+            "Ohio": "OH",
+            "Oklahoma": "OK",
+            "Oregon": "OR",
+            "Pennsylvania": "PA",
+            "Rhode Island": "RI",
+            "South Carolina": "SC",
+            "South Dakota": "SD",
+            "Tennessee": "TN",
+            "Texas": "TX",
+            "Utah": "UT",
+            "Vermont": "VT",
+            "Virginia": "VA",
+            "Washington": "WA",
+            "West Virginia": "WV",
+            "Wisconsin": "WI",
+            "Wyoming": "WY"
+        };
+
+        // Create tooltip
+        const tooltip = d3.select(".tooltip");
+
+        async function fetchMinWageData() {
+            try {
+                // Show loading indicators
+                d3.select("#map-loading").style("display", "block");
+                d3.select("#bar-loading").style("display", "block");
+                d3.select("#calc-loading").style("display", "block");
+
+                const minWageData = {
+                    "Alabama": {
+                        minWage2025: 7.25,
+                        type: "Federal",
+                        notes: "No state minimum wage law",
+                        lastIncrease: "N/A"
+                    },
+                    "Alaska": {
+                        minWage2025: 11.91,
+                        type: "State",
+                        notes: "Adjusted annually for inflation",
+                        lastIncrease: "2025"
+                    },
+                    "Arizona": {
+                        minWage2025: 14.70,
+                        type: "State",
+                        notes: "Ballot measure passed in 2016",
+                        lastIncrease: "2025"
+                    },
+                    "Arkansas": {
+                        minWage2025: 11.00,
+                        type: "State",
+                        notes: "Gradual increases since 2014",
+                        lastIncrease: "2021"
+                    },
+                    "California": {
+                        minWage2025: 16.50,
+                        type: "State",
+                        notes: "$16 minimum wage in 2025",
+                        lastIncrease: "2025"
+                    },
+                    "Colorado": {
+                        minWage2025: 14.81,
+                        type: "State",
+                        notes: "Adjusted annually for inflation",
+                        lastIncrease: "2025"
+                    },
+                    "Connecticut": {
+                        minWage2025: 16.35,
+                        type: "State",
+                        notes: "Reached $15 in 2023, adjusted for inflation",
+                        lastIncrease: "2025"
+                    },
+                    "Delaware": {
+                        minWage2025: 15.00,
+                        type: "State",
+                        notes: "Gradual increases since 2014",
+                        lastIncrease: "2025"
+                    },
+                    "Florida": {
+                        minWage2025: 13.00,
+                        type: "State",
+                        notes: "$15 by 2026 (ballot measure 2020)",
+                        lastIncrease: "2024"
+                    },
+                    "Georgia": {
+                        minWage2025: 7.25,
+                        type: "Federal",
+                        notes: "No state minimum wage law",
+                        lastIncrease: "2001 (federal)"
+                    },
+                    "Hawaii": {
+                        minWage2025: 14.00,
+                        type: "State",
+                        notes: "Gradual increases since 2014",
+                        lastIncrease: "2024"
+                    },
+                    "Idaho": {
+                        minWage2025: 7.25,
+                        type: "Federal",
+                        notes: "No state minimum wage law",
+                        lastIncrease: "2007 (federal)"
+                    },
+                    "Illinois": {
+                        minWage2025: 15.00,
+                        type: "State",
+                        notes: "$15 by 2025",
+                        lastIncrease: "2025"
+                    },
+                    "Indiana": {
+                        minWage2025: 7.25,
+                        type: "Federal",
+                        notes: "No state minimum wage law",
+                        lastIncrease: "2009 (federal)"
+                    },
+                    "Iowa": {
+                        minWage2025: 7.25,
+                        type: "Federal",
+                        notes: "No state minimum wage law",
+                        lastIncrease: "2008"
+                    },
+                    "Kansas": {
+                        minWage2025: 7.25,
+                        type: "Federal",
+                        notes: "No state minimum wage law",
+                        lastIncrease: "2009 (federal)"
+                    },
+                    "Kentucky": {
+                        minWage2025: 7.25,
+                        type: "Federal",
+                        notes: "No state minimum wage law",
+                        lastIncrease: "2009 (federal)"
+                    },
+                    "Louisiana": {
+                        minWage2025: 7.25,
+                        type: "Federal",
+                        notes: "No state minimum wage law",
+                        lastIncrease: "2009 (federal)"
+                    },
+                    "Maine": {
+                        minWage2025: 14.65,
+                        type: "State",
+                        notes: "Adjusted annually for inflation",
+                        lastIncrease: "2025"
+                    },
+                    "Maryland": {
+                        minWage2025: 15.00,
+                        type: "State",
+                        notes: "$15 by 2025",
+                        lastIncrease: "2024"
+                    },
+                    "Massachusetts": {
+                        minWage2025: 15.00,
+                        type: "State",
+                        notes: "$15 minimum wage reached in 2023",
+                        lastIncrease: "2023"
+                    },
+                    "Michigan": {
+                        minWage2025: 10.56,
+                        type: "State",
+                        notes: "Gradual increases since 2014",
+                        lastIncrease: "2025"
+                    },
+                    "Minnesota": {
+                        minWage2025: 11.13,
+                        type: "State",
+                        notes: "Large employers only",
+                        lastIncrease: "2025"
+                    },
+                    "Mississippi": {
+                        minWage2025: 7.25,
+                        type: "Federal",
+                        notes: "No state minimum wage law",
+                        lastIncrease: "2009 (federal)"
+                    },
+                    "Missouri": {
+                        minWage2025: 13.75,
+                        type: "State",
+                        notes: "Ballot measure passed in 2018",
+                        lastIncrease: "2025"
+                    },
+                    "Montana": {
+                        minWage2025: 10.55,
+                        type: "State",
+                        notes: "Adjusted annually for inflation",
+                        lastIncrease: "2025"
+                    },
+                    "Nebraska": {
+                        minWage2025: 13.50,
+                        type: "State",
+                        notes: "Ballot measure passed in 2014",
+                        lastIncrease: "2025"
+                    },
+                    "Nevada": {
+                        minWage2025: 12.00,
+                        type: "State",
+                        notes: "Adjusted annually for inflation",
+                        lastIncrease: "2024"
+                    },
+                    "New Hampshire": {
+                        minWage2025: 7.25,
+                        type: "Federal",
+                        notes: "No state minimum wage law",
+                        lastIncrease: "2009 (federal)"
+                    },
+                    "New Jersey": {
+                        minWage2025: 15.49,
+                        type: "State",
+                        notes: "$15 by 2024",
+                        lastIncrease: "2025"
+                    },
+                    "New Mexico": {
+                        minWage2025: 12.00,
+                        type: "State",
+                        notes: "Gradual increases since 2019",
+                        lastIncrease: "2023"
+                    },
+                    "New York": {
+                        minWage2025: 15.50,
+                        type: "State",
+                        notes: "Varies by region and industry",
+                        lastIncrease: "2025"
+                    },
+                    "North Carolina": {
+                        minWage2025: 7.25,
+                        type: "Federal",
+                        notes: "No state minimum wage law",
+                        lastIncrease: "2007 (federal)"
+                    },
+                    "North Dakota": {
+                        minWage2025: 7.25,
+                        type: "Federal",
+                        notes: "No state minimum wage law",
+                        lastIncrease: "2009 (federal)"
+                    },
+                    "Ohio": {
+                        minWage2025: 10.70,
+                        type: "State",
+                        notes: "Adjusted annually for inflation",
+                        lastIncrease: "2025"
+                    },
+                    "Oklahoma": {
+                        minWage2025: 7.25,
+                        type: "Federal",
+                        notes: "No state minimum wage law",
+                        lastIncrease: "2009 (federal)"
+                    },
+                    "Oregon": {
+                        minWage2025: 14.70,
+                        type: "State",
+                        notes: "Varies by region",
+                        lastIncrease: "2024"
+                    },
+                    "Pennsylvania": {
+                        minWage2025: 7.25,
+                        type: "Federal",
+                        notes: "No state minimum wage law",
+                        lastIncrease: "2009 (federal)"
+                    },
+                    "Rhode Island": {
+                        minWage2025: 15.00,
+                        type: "State",
+                        notes: "Gradual increases since 2014",
+                        lastIncrease: "2025"
+                    },
+                    "South Carolina": {
+                        minWage2025: 7.25,
+                        type: "Federal",
+                        notes: "No state minimum wage law",
+                        lastIncrease: "2009 (federal)"
+                    },
+                    "South Dakota": {
+                        minWage2025: 11.50,
+                        type: "State",
+                        notes: "Ballot measure passed in 2014",
+                        lastIncrease: "2025"
+                    },
+                    "Tennessee": {
+                        minWage2025: 7.25,
+                        type: "Federal",
+                        notes: "No state minimum wage law",
+                        lastIncrease: "2009 (federal)"
+                    },
+                    "Texas": {
+                        minWage2025: 7.25,
+                        type: "Federal",
+                        notes: "No state minimum wage law",
+                        lastIncrease: "2009 (federal)"
+                    },
+                    "Utah": {
+                        minWage2025: 7.25,
+                        type: "Federal",
+                        notes: "No state minimum wage law",
+                        lastIncrease: "N/A"
+                    },
+                    "Vermont": {
+                        minWage2025: 14.01,
+                        type: "State",
+                        notes: "Adjusted annually for inflation",
+                        lastIncrease: "2025"
+                    },
+                    "Virginia": {
+                        minWage2025: 12.41,
+                        type: "State",
+                        notes: "$15 by 2026",
+                        lastIncrease: "2025"
+                    },
+                    "Washington": {
+                        minWage2025: 16.66,
+                        type: "State",
+                        notes: "Highest state minimum wage",
+                        lastIncrease: "2025"
+                    },
+                    "West Virginia": {
+                        minWage2025: 8.75,
+                        type: "State",
+                        notes: "No recent increases",
+                        lastIncrease: "2015"
+                    },
+                    "Wisconsin": {
+                        minWage2025: 7.25,
+                        type: "Federal",
+                        notes: "No state minimum wage law",
+                        lastIncrease: "2009 (federal)"
+                    },
+                    "Wyoming": {
+                        minWage2025: 7.25,
+                        type: "Federal",
+                        notes: "No state minimum wage law",
+                        lastIncrease: "2002"
+                    }
+                };
+
+                // Living wage data for 2025 (estimated based on current trends)
+                const livingWageData = {
+                    "Alabama": { single: 20.50, single_child: 33.82, two_adults: 14.56, two_adults_one_working: 29.13, two_adults_two_children: 28.34 },
+                    "Alaska": { single: 18.63, single_child: 36.12, two_adults: 27.45, two_adults_one_working: 27.45, two_adults_two_children: 32.78 },
+                    "Arizona": { single: 17.45, single_child: 34.78, two_adults: 25.89, two_adults_one_working: 25.89, two_adults_two_children: 30.45 },
+                    "Arkansas": { single: 15.76, single_child: 32.41, two_adults: 23.12, two_adults_one_working: 23.12, two_adults_two_children: 27.34 },
+                    "California": { single: 22.82, single_child: 45.12, two_adults: 33.56, two_adults_one_working: 33.56, two_adults_two_children: 39.91 },
+                    "Colorado": { single: 19.45, single_child: 38.78, two_adults: 28.89, two_adults_one_working: 28.89, two_adults_two_children: 33.45 },
+                    "Connecticut": { single: 20.65, single_child: 41.78, two_adults: 30.12, two_adults_one_working: 30.12, two_adults_two_children: 36.45 },
+                    "Delaware": { single: 18.45, single_child: 36.78, two_adults: 27.89, two_adults_one_working: 27.89, two_adults_two_children: 32.45 },
+                    "Florida": { single: 18.12, single_child: 36.45, two_adults: 27.78, two_adults_one_working: 27.78, two_adults_two_children: 32.12 },
+                    "Georgia": { single: 17.12, single_child: 34.45, two_adults: 25.78, two_adults_one_working: 25.78, two_adults_two_children: 30.12 },
+                    "Hawaii": { single: 23.65, single_child: 46.78, two_adults: 34.12, two_adults_one_working: 34.12, two_adults_two_children: 40.45 },
+                    "Idaho": { single: 16.12, single_child: 33.45, two_adults: 24.78, two_adults_one_working: 24.78, two_adults_two_children: 29.12 },
+                    "Illinois": { single: 18.65, single_child: 37.78, two_adults: 28.12, two_adults_one_working: 28.12, two_adults_two_children: 33.45 },
+                    "Indiana": { single: 16.45, single_child: 33.78, two_adults: 24.89, two_adults_one_working: 24.89, two_adults_two_children: 29.45 },
+                    "Iowa": { single: 16.12, single_child: 33.45, two_adults: 24.78, two_adults_one_working: 24.78, two_adults_two_children: 29.12 },
+                    "Kansas": { single: 16.12, single_child: 33.45, two_adults: 24.78, two_adults_one_working: 24.78, two_adults_two_children: 29.12 },
+                    "Kentucky": { single: 16.12, single_child: 33.45, two_adults: 24.78, two_adults_one_working: 24.78, two_adults_two_children: 29.12 },
+                    "Louisiana": { single: 16.12, single_child: 33.45, two_adults: 24.78, two_adults_one_working: 24.78, two_adults_two_children: 29.12 },
+                    "Maine": { single: 17.65, single_child: 35.78, two_adults: 26.12, two_adults_one_working: 26.12, two_adults_two_children: 31.45 },
+                    "Maryland": { single: 21.65, single_child: 42.78, two_adults: 31.12, two_adults_one_working: 31.12, two_adults_two_children: 37.45 },
+                    "Massachusetts": { single: 23.65, single_child: 46.78, two_adults: 34.12, two_adults_one_working: 34.12, two_adults_two_children: 40.45 },
+                    "Michigan": { single: 17.65, single_child: 35.78, two_adults: 26.12, two_adults_one_working: 26.12, two_adults_two_children: 31.45 },
+                    "Minnesota": { single: 18.65, single_child: 37.78, two_adults: 28.12, two_adults_one_working: 28.12, two_adults_two_children: 33.45 },
+                    "Mississippi": { single: 16.12, single_child: 33.45, two_adults: 24.78, two_adults_one_working: 24.78, two_adults_two_children: 29.12 },
+                    "Missouri": { single: 16.65, single_child: 34.78, two_adults: 25.12, two_adults_one_working: 25.12, two_adults_two_children: 30.45 },
+                    "Montana": { single: 16.65, single_child: 34.78, two_adults: 25.12, two_adults_one_working: 25.12, two_adults_two_children: 30.45 },
+                    "Nebraska": { single: 16.65, single_child: 34.78, two_adults: 25.12, two_adults_one_working: 25.12, two_adults_two_children: 30.45 },
+                    "Nevada": { single: 17.65, single_child: 35.78, two_adults: 26.12, two_adults_one_working: 26.12, two_adults_two_children: 31.45 },
+                    "New Hampshire": { single: 18.65, single_child: 37.78, two_adults: 28.12, two_adults_one_working: 28.12, two_adults_two_children: 33.45 },
+                    "New Jersey": { single: 21.65, single_child: 42.78, two_adults: 31.12, two_adults_one_working: 31.12, two_adults_two_children: 37.45 },
+                    "New Mexico": { single: 16.65, single_child: 34.78, two_adults: 25.12, two_adults_one_working: 25.12, two_adults_two_children: 30.45 },
+                    "New York": { single: 23.65, single_child: 46.78, two_adults: 34.12, two_adults_one_working: 34.12, two_adults_two_children: 40.45 },
+                    "North Carolina": { single: 17.12, single_child: 34.45, two_adults: 25.78, two_adults_one_working: 25.78, two_adults_two_children: 30.12 },
+                    "North Dakota": { single: 16.65, single_child: 34.78, two_adults: 25.12, two_adults_one_working: 25.12, two_adults_two_children: 30.45 },
+                    "Ohio": { single: 16.65, single_child: 34.78, two_adults: 25.12, two_adults_one_working: 25.12, two_adults_two_children: 30.45 },
+                    "Oklahoma": { single: 16.12, single_child: 33.45, two_adults: 24.78, two_adults_one_working: 24.78, two_adults_two_children: 29.12 },
+                    "Oregon": { single: 19.65, single_child: 39.78, two_adults: 29.12, two_adults_one_working: 29.12, two_adults_two_children: 34.45 },
+                    "Pennsylvania": { single: 17.65, single_child: 35.78, two_adults: 26.12, two_adults_one_working: 26.12, two_adults_two_children: 31.45 },
+                    "Rhode Island": { single: 19.65, single_child: 39.78, two_adults: 29.12, two_adults_one_working: 29.12, two_adults_two_children: 34.45 },
+                    "South Carolina": { single: 16.12, single_child: 33.45, two_adults: 24.78, two_adults_one_working: 24.78, two_adults_two_children: 29.12 },
+                    "South Dakota": { single: 16.65, single_child: 34.78, two_adults: 25.12, two_adults_one_working: 25.12, two_adults_two_children: 30.45 },
+                    "Tennessee": { single: 16.12, single_child: 33.45, two_adults: 24.78, two_adults_one_working: 24.78, two_adults_two_children: 29.12 },
+                    "Texas": { single: 17.12, single_child: 34.45, two_adults: 25.78, two_adults_one_working: 25.78, two_adults_two_children: 30.12 },
+                    "Utah": { single: 17.65, single_child: 35.78, two_adults: 26.12, two_adults_one_working: 26.12, two_adults_two_children: 31.45 },
+                    "Vermont": { single: 18.65, single_child: 37.78, two_adults: 28.12, two_adults_one_working: 28.12, two_adults_two_children: 33.45 },
+                    "Virginia": { single: 19.65, single_child: 39.78, two_adults: 29.12, two_adults_one_working: 29.12, two_adults_two_children: 34.45 },
+                    "Washington": { single: 21.65, single_child: 42.78, two_adults: 31.12, two_adults_one_working: 31.12, two_adults_two_children: 37.45 },
+                    "West Virginia": { single: 16.12, single_child: 33.45, two_adults: 24.78, two_adults_one_working: 24.78, two_adults_two_children: 29.12 },
+                    "Wisconsin": { single: 16.65, single_child: 34.78, two_adults: 25.12, two_adults_one_working: 25.12, two_adults_two_children: 30.45 },
+                    "Wyoming": { single: 16.65, single_child: 34.78, two_adults: 25.12, two_adults_one_working: 25.12, two_adults_two_children: 30.45 }
+                };
+
+                const expenseData = {};
+                Object.keys(livingWageData).forEach(state => {
+                    // Using CPI weights from the table (April 2025)
+                    const cpiWeights = {
+                        housing: 0.35426,  // Shelter (35.426%)
+                        food: 0.13681,     // Food (13.681%)
+                        transportation: 0.06270, // Transportation services (6.270%) + part of energy
+                        healthcare: 0.06736, // Medical care services (6.736%)
+                        other: 0.37887      // Everything else (100% - above)
+                    };
+
+                    // Calculate monthly expenses based on living wage and CPI weights
+                    const monthlyLivingWage = livingWageData[state].single * 40 * 4; // Monthly living wage
+
+                    expenseData[state] = {
+                        "housing": monthlyLivingWage * cpiWeights.housing,
+                        "food": monthlyLivingWage * cpiWeights.food,
+                        "transportation": monthlyLivingWage * cpiWeights.transportation,
+                        "healthcare": monthlyLivingWage * cpiWeights.healthcare,
+                        "other": monthlyLivingWage * cpiWeights.other
+                    };
+                });
+
+                // Calculate wage gaps for all household types
+                Object.keys(minWageData).forEach(state => {
+                    if (livingWageData[state]) {
+                        minWageData[state].gaps = {};
+                        Object.keys(livingWageData[state]).forEach(household => {
+                            const livingWage = livingWageData[state][household];
+                            const minWage = minWageData[state].minWage2025;
+                            minWageData[state].gaps[household] = (minWage / livingWage) * 100;
+                        });
+                    }
+                });
+
+                // Hide loading indicators
+                d3.select("#map-loading").style("display", "none");
+                d3.select("#bar-loading").style("display", "none");
+                d3.select("#calc-loading").style("display", "none");
+
+                return { minWageData, livingWageData, expenseData };
+            } catch (error) {
+                console.error("Error fetching data:", error);
+                d3.select("#map-loading").text("Error loading data. Please try again later.").style("color", "red");
+                d3.select("#bar-loading").text("Error loading data. Please try again later.").style("color", "red");
+                d3.select("#calc-loading").text("Error loading data. Please try again later.").style("color", "red");
+                return null;
+            }
+        }
+
+        // Color scales
+        const wageColorScale = d3.scaleThreshold()
+            .domain([7.25, 10, 12, 14, 16, 18])
+            .range(["#fee5d9", "#fcbba1", "#fc9272", "#fb6a4a", "#de2d26", "#a50f15"]);
+
+        const gapColorScale = d3.scaleThreshold()
+            .domain([25, 50, 75, 100])
+            .range(["#b2182b", "#ef8a62", "#fddbc7", "#d1e5f0", "#67a9cf", "#2166ac"]);
+
+        // Load the data and create visualizations
+        fetchMinWageData().then(data => {
+            if (!data) return;
+
+            const { minWageData, livingWageData, expenseData } = data;
+
+            d3.json("https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json").then(usData => {
+                // Create choropleth map
+                createMap(usData, minWageData);
+
+                // Create bar chart
+                createBarChart(minWageData);
+
+                // Set up calculator
+                setupCalculator(minWageData, livingWageData, expenseData);
+
+                // Set up the filters
+                setupFilters(minWageData, usData);
+
+            }).catch(error => {
+                console.error("Error loading map data:", error);
+                d3.select("#map-loading").text("Error loading map data. Please try again later.").style("color", "red");
+            });
+        });
+
+        function createMap(usData, stateData) {
+            const svg = d3.select("#choropleth");
+            svg.selectAll("*").remove();
+
+            const projection = d3.geoAlbersUsa()
+                .translate([width / 2 + 50, height / 2 + 20])
+                .scale(1200);
+
+            const path = d3.geoPath().projection(projection);
+
+            // Create a group for all map elements
+            const mapGroup = svg.append("g");
+
+            // Draw states
+            mapGroup.selectAll(".state-path")
+                .data(topojson.feature(usData, usData.objects.states).features)
+                .enter().append("path")
+                .attr("class", "state-path")
+                .attr("d", path)
+                .attr("fill", d => {
+                    const state = d.properties.name;
+                    return stateData[state] ?
+                        wageColorScale(stateData[state].minWage2025) : "#ccc";
+                })
+                .attr("stroke", "#fff")
+                .attr("stroke-width", 1)
+                .on("click", function (event, d) {
+                    const state = d.properties.name;
+                    if (stateData[state]) {
+                        // Highlight selected state
+                        svg.selectAll(".state-path")
+                            .classed("selected-state", false)
+                            .filter(d => d.properties.name === state)
+                            .classed("selected-state", true);
+
+                        // Update state info panel
+                        updateStateInfo(state, stateData[state]);
+                    }
+                });
+
+            // Add state abbreviations as labels
+            mapGroup.selectAll(".state-label")
+                .data(topojson.feature(usData, usData.objects.states).features)
+                .enter().append("text")
+                .attr("class", "state-label")
+                .attr("transform", d => {
+                    const [x, y] = path.centroid(d);
+                    return `translate(${x},${y})`;
+                })
+                .attr("text-anchor", "middle")
+                .attr("dy", ".35em")
+                .style("pointer-events", "none")
+                .text(d => stateAbbreviations[d.properties.name] || "");
+
+            // Add legend
+            addMapLegend(svg, "Minimum Wage ($/hour)", wageColorScale, wageColorScale.domain());
+        }
+
+        function updateStateInfo(state, data) {
+            const infoPanel = d3.select("#state-info-panel");
+
+            infoPanel.html(`
+        <div class="info-header">${state} (${stateAbbreviations[state]})</div>
+        <div class="info-row">
+            <span class="info-label">Minimum Wage:</span>
+            <span class="info-value">$${data.minWage2025.toFixed(2)}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Wage Type:</span>
+            <span class="info-value">${data.type}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Last Increase:</span>
+            <span class="info-value">${data.lastIncrease || "N/A"}</span>
+        </div>
+        <div class="info-notes">${data.notes}</div>
+    `).style("display", "block")
+                .style("left", "20px")
+                .style("top", "20px");
+        }
+
+        function addMapLegend(svg, title, colorScale, domain) {
+            // Clear existing legend
+            svg.selectAll(".legend").remove();
+
+            const legendX = width - 200;
+            const legendY = 30;
+
+            const legend = svg.append("g")
+                .attr("class", "legend")
+                .attr("transform", `translate(${legendX}, ${legendY})`);
+
+            // Add title
+            legend.append("text")
+                .attr("class", "legend-title")
+                .attr("x", 0)
+                .attr("y", -10)
+                .text(title);
+
+            // Create gradient
+            const defs = svg.append("defs");
+            const gradient = defs.append("linearGradient")
+                .attr("id", "legend-gradient")
+                .attr("x1", "0%")
+                .attr("y1", "0%")
+                .attr("x2", "100%")
+                .attr("y2", "0%");
+
+            // Add color stops
+            colorScale.range().forEach((color, i) => {
+                gradient.append("stop")
+                    .attr("offset", `${(i * 100) / (colorScale.range().length - 1)}%`)
+                    .attr("stop-color", color);
+            });
+
+            // Add gradient bar
+            legend.append("rect")
+                .attr("x", 0)
+                .attr("y", 0)
+                .attr("width", 150)
+                .attr("height", 20)
+                .style("fill", "url(#legend-gradient)");
+
+            // Add scale
+            const xScale = d3.scaleLinear()
+                .domain([domain[0], domain[domain.length - 1]])
+                .range([0, 150]);
+
+            // Format based on legend type
+            const format = title.includes("$") ? d => "$" + d :
+                title.includes("%") ? d => d + "%" :
+                    d => d;
+
+            // Add axis
+            legend.append("g")
+                .attr("class", "legend-axis")
+                .attr("transform", "translate(0, 20)")
+                .call(d3.axisBottom(xScale)
+                    .tickValues(domain)
+                    .tickFormat(format))
+                .selectAll("text")
+                .style("font-size", "10px");
+        }
+
+        function setupFilters(stateData, usData) {
+            d3.select("#apply-filter").on("click", function () {
+                const comparison = d3.select("#wage-comparison").property("value");
+                const amount = +d3.select("#wage-amount").property("value");
+
+                d3.select("#choropleth").selectAll(".state-path")
+                    .attr("fill", d => {
+                        const state = d.properties.name;
+                        if (!stateData[state]) return "#ccc";
+
+                        const wage = stateData[state].minWage2025;
+                        const matches = comparison === "greater" ? wage >= amount : wage <= amount;
+
+                        return matches ? wageColorScale(wage) : "#f5f5f5";
+                    })
+                    .attr("stroke", d => {
+                        const state = d.properties.name;
+                        if (!stateData[state]) return "#ddd";
+
+                        const wage = stateData[state].minWage2025;
+                        const matches = comparison === "greater" ? wage >= amount : wage <= amount;
+
+                        return matches ? "#fff" : "#ddd";
+                    })
+                    .classed("non-matching-state", d => {
+                        const state = d.properties.name;
+                        if (!stateData[state]) return true;
+
+                        const wage = stateData[state].minWage2025;
+                        return comparison === "greater" ? wage < amount : wage > amount;
+                    });
+            });
+
+            d3.select("#sort-by").on("change", function () {
+                const householdType = d3.select("#household-calc").property("value");
+                updateBarChart(stateData, householdType);
+            });
+        }
+
+        function handleBarMouseover(event, d, stateData, sortBy, householdType, x, y, margin, svg) {
+            d3.select(this).attr("opacity", 1);
+
+            let valueText;
+            if (sortBy === "gap") {
+                valueText = stateData[d].gaps ? stateData[d].gaps[householdType].toFixed(1) + "%" : "N/A";
+            } else {
+                valueText = "$" + stateData[d].minWage2025.toFixed(2);
+            }
+
+            const barWidth = sortBy === "gap"
+                ? x(stateData[d].gaps[householdType]) - margin.left
+                : x(stateData[d].minWage2025) - margin.left;
+
+            const textX = margin.left + barWidth + 5;
+            const textY = y(d) + y.bandwidth() / 2;
+
+            svg.selectAll(".bar-value").remove();
+
+            svg.append("text")
+                .attr("class", "bar-value")
+                .attr("x", textX)
+                .attr("y", textY)
+                .attr("dy", "0.35em")
+                .style("font-size", "12px")
+                .style("font-weight", "bold")
+                .text(valueText);
+        }
+
+        function handleBarMouseout() {
+            d3.select(this).attr("opacity", 0.8);
+            d3.select("#barchart").selectAll(".bar-value").remove();
+        }
+
+        function createBarChart(stateData, selectedState = null) {
+            const svg = d3.select("#barchart");
+            svg.selectAll("*").remove();
+
+            // Sort states by wage
+            const sortedStates = Object.keys(stateData)
+                .filter(state => stateData[state].minWage2025)
+                .sort((a, b) => stateData[b].minWage2025 - stateData[a].minWage2025);
+
+            // Set x-axis domain to fixed $0-$30 range
+            const x = d3.scaleLinear()
+                .domain([0, 30])
+                .range([margin.left, width - margin.right]);
+
+            const y = d3.scaleBand()
+                .domain(sortedStates)
+                .range([margin.top, barHeight])
+                .padding(0.2); 
+
+            // Add x-axis
+            svg.append("g")
+                .attr("class", "x-axis")
+                .attr("transform", `translate(0, ${barHeight})`)
+                .call(d3.axisBottom(x).ticks(6).tickFormat(d => "$" + d))
+                .attr("font-size", "12px")
+                .call(g => g.select(".domain").attr("stroke", "#ccc"))
+                .call(g => g.selectAll(".tick line").attr("stroke", "#eee"));
+
+            // Add x-axis label
+            svg.append("text")
+                .attr("class", "axis-label")
+                .attr("x", width / 2)
+                .attr("y", barHeight + margin.bottom - 10)
+                .style("text-anchor", "middle")
+                .text("Minimum Wage ($/hour)");
+
+            // Add y-axis with improved styling
+            svg.append("g")
+                .attr("class", "y-axis")
+                .attr("transform", `translate(${margin.left}, 0)`)
+                .call(d3.axisLeft(y).tickSize(0))
+                .attr("font-size", "12px")
+                .call(g => g.select(".domain").attr("stroke", "#ccc"));
+
+            // In createBarChart(), modify the bars section:
+            svg.selectAll(".bar")
+                .data(sortedStates)
+                .enter().append("rect")
+                .attr("class", "bar")
+                .attr("x", margin.left)
+                .attr("y", d => y(d))
+                .attr("width", d => x(stateData[d].minWage2025) - margin.left)
+                .attr("height", y.bandwidth())
+                .attr("rx", 2)
+                .attr("ry", 2)
+                .attr("fill", d => stateData[d].type === "State" ? "#3498db" : "#95a5a6")
+                .attr("opacity", 0.9)
+                .on("mouseover", function (event, d) {
+                    handleBarMouseover.call(this, event, d, stateData, "wage", "single", x, y, margin, svg);
+                })
+                .on("mouseout", handleBarMouseout);
+
+            // Add federal minimum wage line
+            svg.append("line")
+                .attr("class", "federal-line")
+                .attr("x1", x(7.25))
+                .attr("y1", margin.top - 10)
+                .attr("x2", x(7.25))
+                .attr("y2", barHeight - 10)
+                .attr("stroke", "#e74c3c")
+                .attr("stroke-width", 1.5)
+                .attr("stroke-dasharray", "3,3");
+
+            svg.append("text")
+                .attr("class", "federal-label")
+                .attr("x", x(7.25) + 5)
+                .attr("y", margin.top - 5)
+                .text("Federal Minimum Wage")
+                .style("font-size", "10px")
+                .style("fill", "#e74c3c")
+                .style("font-weight", "bold");
+
+            svg.append("line")
+                .attr("class", "fifteen-dollar-line")
+                .attr("x1", x(15))
+                .attr("y1", margin.top - 10)
+                .attr("x2", x(15))
+                .attr("y2", barHeight - 10)
+                .attr("stroke", "#27ae60")  
+                .attr("stroke-width", 1.5)
+                .attr("stroke-dasharray", "3,3");
+
+            svg.append("text")
+                .attr("class", "fifteen-dollar-label")
+                .attr("x", x(15) + 5)
+                .attr("y", margin.top - 5)
+                .text("$15 Benchmark")
+                .style("font-size", "10px")
+                .style("fill", "#27ae60")
+                .style("font-weight", "bold");
+
+            // Add chart title
+            svg.append("text")
+                .attr("class", "chart-title")
+                .attr("x", width / 2)
+                .attr("y", margin.top - 25)
+                .style("text-anchor", "middle")
+                .style("font-size", "16px")
+                .style("font-weight", "bold")
+                .style("fill", "#2c3e50")
+                .text("State Minimum Wages (2025)");
+        }
+
+        function updateBarChart(stateData, householdType = "single", selectedState = null) {
+            const svg = d3.select("#barchart");
+
+            // Remove existing axes and labels completely
+            svg.selectAll(".x-axis, .y-axis, .axis-label, .federal-line, .federal-label, .fifteen-dollar-line, .fifteen-dollar-label, .chart-title").remove();
+
+            // Sort states based on selected criteria
+            const sortBy = d3.select("#sort-by").property("value");
+            let sortedStates;
+
+            if (sortBy === "wage") {
+                sortedStates = Object.keys(stateData)
+                    .filter(state => stateData[state].minWage2025)
+                    .sort((a, b) => stateData[b].minWage2025 - stateData[a].minWage2025);
+            } else if (sortBy === "gap") {
+                sortedStates = Object.keys(stateData)
+                    .filter(state => stateData[state].gaps)
+                    .sort((a, b) => stateData[b].gaps[householdType] - stateData[a].gaps[householdType]);
+            } else { // sort by state name
+                sortedStates = Object.keys(stateData)
+                    .filter(state => stateData[state].minWage2025)
+                    .sort();
+            }
+
+            // Update scales based on sort criteria
+            const x = d3.scaleLinear();
+            let xAxisLabel;
+
+            if (sortBy === "gap") {
+                x.domain([0, 100])
+                    .range([margin.left, width - margin.right]);
+                xAxisLabel = "Minimum Wage as % of Living Wage";
+            } else {
+                x.domain([0, 30])
+                    .range([margin.left, width - margin.right]);
+                xAxisLabel = "Minimum Wage ($/hour)";
+            }
+
+            const y = d3.scaleBand()
+                .domain(sortedStates)
+                .range([margin.top, barHeight])
+                .padding(0.3);
+
+            // Update bars
+            const bars = svg.selectAll(".bar")
+                .data(sortedStates, d => d);
+
+            // Remove exiting bars
+            bars.exit().remove();
+
+            // Update existing bars
+            bars.transition()
+                .duration(500)
+                .attr("y", d => y(d))
+                .attr("width", d => {
+                    if (sortBy === "gap") {
+                        return stateData[d].gaps ? x(stateData[d].gaps[householdType]) - margin.left : 0;
+                    } else {
+                        return x(stateData[d].minWage2025) - margin.left;
+                    }
+                })
+                .attr("fill", d => {
+                    if (sortBy === "gap") {
+                        return stateData[d].gaps ? gapColorScale(stateData[d].gaps[householdType]) : "#ccc";
+                    } else {
+                        return stateData[d].type === "State" ? "#3498db" : "#95a5a6";
+                    }
+                })
+                .attr("opacity", 0.8);
+
+            // Add mouse handlers to updated bars
+            bars.on("mouseover", function (event, d) {
+                handleBarMouseover.call(this, event, d, stateData, sortBy, householdType, x, y, margin, svg);
+            })
+                .on("mouseout", handleBarMouseout);
+
+            // Add new bars with mouseover events
+            bars.enter().append("rect")
+                .attr("class", "bar")
+                .attr("x", margin.left)
+                .attr("y", d => y(d))
+                .attr("width", d => {
+                    if (sortBy === "gap") {
+                        return stateData[d].gaps ? x(stateData[d].gaps[householdType]) - margin.left : 0;
+                    } else {
+                        return x(stateData[d].minWage2025) - margin.left;
+                    }
+                })
+                .attr("height", y.bandwidth())
+                .attr("rx", 3)
+                .attr("ry", 3)
+                .attr("fill", d => {
+                    if (sortBy === "gap") {
+                        return stateData[d].gaps ? gapColorScale(stateData[d].gaps[householdType]) : "#ccc";
+                    } else {
+                        return stateData[d].type === "State" ? "#3498db" : "#95a5a6";
+                    }
+                })
+                .attr("opacity", 0.8)
+                .on("mouseover", function (event, d) {
+                    handleBarMouseover.call(this, event, d, stateData, sortBy, householdType, x, y, margin, svg);
+                })
+                .on("mouseout", handleBarMouseout);
+
+            // Add new x-axis
+            svg.append("g")
+                .attr("class", "x-axis")
+                .attr("transform", `translate(0, ${barHeight})`)
+                .call(d3.axisBottom(x).ticks(sortBy === "gap" ? 5 : 6).tickFormat(d =>
+                    sortBy === "gap" ? d + "%" : "$" + d))
+                .attr("font-size", "12px")
+                .call(g => g.select(".domain").attr("stroke", "#ccc"))
+                .call(g => g.selectAll(".tick line").attr("stroke", "#eee"));
+
+            // Add x-axis label
+            svg.append("text")
+                .attr("class", "axis-label")
+                .attr("x", width / 2)
+                .attr("y", barHeight + margin.bottom)
+                .style("text-anchor", "middle")
+                .text(xAxisLabel);
+
+            // Add new y-axis
+            svg.append("g")
+                .attr("class", "y-axis")
+                .attr("transform", `translate(${margin.left}, 0)`)
+                .call(d3.axisLeft(y).tickSize(0))
+                .attr("font-size", "11px")
+                .call(g => g.select(".domain").attr("stroke", "#ccc"));
+
+            // Only add federal wage line if we're showing dollar amounts
+            if (sortBy !== "gap") {
+                svg.append("line")
+                    .attr("class", "federal-line")
+                    .attr("x1", x(7.25))
+                    .attr("y1", margin.top - 10)
+                    .attr("x2", x(7.25))
+                    .attr("y2", barHeight + 20)
+                    .attr("stroke", "#e74c3c")
+                    .attr("stroke-width", 2)
+                    .attr("stroke-dasharray", "5,5");
+
+                svg.append("text")
+                    .attr("class", "federal-label")
+                    .attr("x", x(7.25) + 5)
+                    .attr("y", margin.top - 5)
+                    .text("Federal Minimum Wage")
+                    .style("font-size", "12px")
+                    .style("fill", "#e74c3c");
+
+                // Add $15 wage line
+                svg.append("line")
+                    .attr("class", "fifteen-dollar-line")
+                    .attr("x1", x(15))
+                    .attr("y1", margin.top - 10)
+                    .attr("x2", x(15))
+                    .attr("y2", barHeight + 20)
+                    .attr("stroke", "#27ae60")
+                    .attr("stroke-width", 2)
+                    .attr("stroke-dasharray", "5,5");
+
+                svg.append("text")
+                    .attr("class", "fifteen-dollar-label")
+                    .attr("x", x(15) + 5)
+                    .attr("y", margin.top - 5)
+                    .text("$15 Benchmark")
+                    .style("font-size", "12px")
+                    .style("fill", "#27ae60");
+            }
+
+            // Titles
+            let titleText;
+            if (sortBy === "wage") {
+                titleText = "State Minimum Wages (2025)";
+            } else if (sortBy === "gap") {
+                titleText = `Minimum Wage as % of Living Wage (${householdType.replace(/_/g, " ")})`;
+            } else {
+                titleText = "State Minimum Wages (2025) - Alphabetical";
+            }
+
+            svg.append("text")
+                .attr("class", "chart-title")
+                .attr("x", width / 2)
+                .attr("y", margin.top - 25)
+                .style("text-anchor", "middle")
+                .style("font-size", "16px")
+                .style("font-weight", "bold")
+                .style("fill", "#2c3e50")
+                .text(titleText);
+        }
+
+        function setupCalculator(stateData, livingWageData, expenseData) {
+            const stateSelect = d3.select("#state-select");
+            const states = Object.keys(stateData).sort();
+
+            stateSelect.selectAll("option")
+                .data(states)
+                .enter().append("option")
+                .attr("value", d => d)
+                .text(d => d);
+
+            // Set default state
+            if (states.length > 0) {
+                updateCalculator(states[0], "single", stateData, livingWageData, expenseData);
+            }
+
+            // Add event listeners
+            stateSelect.on("change", function () {
+                const householdType = d3.select("#household-calc").property("value");
+                updateCalculator(this.value, householdType, stateData, livingWageData, expenseData);
+            });
+
+            d3.select("#household-calc").on("change", function () {
+                const state = stateSelect.property("value");
+                updateCalculator(state, this.value, stateData, livingWageData, expenseData);
+            });
+
+            d3.select("#hours-per-week").on("change", function () {
+                const state = stateSelect.property("value");
+                const householdType = d3.select("#household-calc").property("value");
+                updateCalculator(state, householdType, stateData, livingWageData, expenseData);
+            });
+        }
+
+        function updateCalculator(state, householdType, stateData, livingWageData, expenseData) {
+            if (!stateData[state] || !livingWageData[state] || !expenseData[state]) return;
+
+            const hoursPerWeek = +d3.select("#hours-per-week").property("value");
+            const minWage = stateData[state].minWage2025;
+            const livingWage = livingWageData[state][householdType];
+
+            // Calculate monthly income (using 4.33 weeks/month for accuracy)
+            let monthlyIncome;
+            if (householdType === "two_adults" || householdType === "two_adults_two_children") {
+                // For two working adults, double the income
+                monthlyIncome = minWage * hoursPerWeek * 4.33 * 2;
+            } else {
+                monthlyIncome = minWage * hoursPerWeek * 4.33;
+            }
+            const baseExpenses = expenseData[state];
+            const multiplier = getHouseholdMultiplier(householdType);
+
+            const monthlyExpenses = {
+                housing: baseExpenses.housing * multiplier.housing,
+                food: baseExpenses.food * multiplier.food,
+                transportation: baseExpenses.transportation * multiplier.transportation,
+                healthcare: baseExpenses.healthcare * multiplier.healthcare,
+                other: baseExpenses.other * multiplier.other,
+                get total() {
+                    return this.housing + this.food + this.transportation + this.healthcare + this.other;
+                }
+            };
+
+            const surplusDeficit = monthlyIncome - monthlyExpenses.total;
+            const deficitPercentage = surplusDeficit < 0 ?
+                ((Math.abs(surplusDeficit) / monthlyIncome) * 100).toFixed(1) : 0;
+
+            d3.select("#income").html(`
+        <strong>Monthly Income:</strong> $${monthlyIncome.toFixed(2)}<br>
+        <small>(${hoursPerWeek} hours/week @ $${minWage.toFixed(2)}/hour${(householdType === "two_adults" || householdType === "two_adults_two_children") ?
+                    " × 2 incomes" : ""})</small>
+    `);
+
+            d3.select("#expenses").html(`
+        <strong>Monthly Expenses:</strong> $${monthlyExpenses.total.toFixed(2)}<br>
+        <small>(Living wage for household: $${(livingWage * hoursPerWeek * 4.33 * (householdType === "two_adults" ? 2 : 1)).toFixed(2)})</small>
+    `);
+
+            const resultHTML = surplusDeficit >= 0 ?
+                `<strong>Surplus:</strong> <span style="color:green">$${surplusDeficit.toFixed(2)}</span>` :
+                `<strong>Deficit:</strong> <span style="color:red">$${Math.abs(surplusDeficit).toFixed(2)} (${deficitPercentage}% of income)</span>`;
+
+            d3.select("#surplus-deficit").html(resultHTML);
+
+            // Update pie chart with the accurate data
+            updatePieChart(monthlyIncome, monthlyExpenses);
+        }
+
+        function getHouseholdMultiplier(householdType) {
+            // Multipliers based on typical household expense patterns
+            switch (householdType) {
+                case "single":
+                    return { housing: 1.0, food: 1.0, transportation: 1.0, healthcare: 1.0, other: 1.0 };
+                case "single_child":
+                    return { housing: 1.3, food: 1.5, transportation: 1.2, healthcare: 1.4, other: 1.3 };
+                case "two_adults":  // Two adults both working
+                case "two_adults_one_working":  // Two adults, one working
+                    return { housing: 1.5, food: 1.8, transportation: 1.3, healthcare: 1.6, other: 1.5 };
+                case "two_adults_two_children":  // Two adults both working with children
+                    return { housing: 1.8, food: 2.3, transportation: 1.6, healthcare: 2.1, other: 1.9 };
+                default:
+                    return { housing: 1.0, food: 1.0, transportation: 1.0, healthcare: 1.0, other: 1.0 };
+            }
+        }
+
+        function updatePieChart(income, expenses) {
+            const svg = d3.select("#budget-pie");
+            svg.selectAll("*").remove();
+
+            const data = [
+                { category: "Housing", value: expenses.housing },
+                { category: "Food", value: expenses.food },
+                { category: "Transportation", value: expenses.transportation },
+                { category: "Healthcare", value: expenses.healthcare },
+                { category: "Other", value: expenses.other },
+                { category: "Remaining", value: Math.max(0, income - expenses.total) }
+            ].filter(d => d.value > 0);
+
+            const color = d3.scaleOrdinal()
+                .domain(data.map(d => d.category))
+                .range(["#3498db", "#2ecc71", "#e74c3c", "#f39c12", "#9b59b6", "#95a5a6"]);
+
+            const pie = d3.pie()
+                .value(d => d.value)
+                .sort(null);
+
+            // Main arc for pie slices
+            const arc = d3.arc()
+                .innerRadius(0)
+                .outerRadius(pieRadius - 20);
+
+            const outerArc = d3.arc()
+                .innerRadius(pieRadius * 0.8)
+                .outerRadius(pieRadius * 0.8);
+
+            const arcs = svg.append("g")
+                .attr("transform", `translate(${450}, ${pieRadius})`)
+                .selectAll(".arc")
+                .data(pie(data))
+                .enter().append("g")
+                .attr("class", "pie-arc");
+
+            // Draw pie slices 
+            arcs.append("path")
+                .attr("d", arc)
+                .attr("fill", d => color(d.data.category))
+                .attr("stroke", "#fff")
+                .attr("stroke-width", 1);
+
+            // Add connecting lines 
+            arcs.append("polyline")
+                .attr("class", "pie-line")
+                .attr("points", function (d) {
+                    const midAngle = d.startAngle + (d.endAngle - d.startAngle) / 2;
+                    const posA = arc.centroid(d);
+                    const posB = outerArc.centroid(d);
+                    const posC = [pieRadius * 0.95 * (midAngle < Math.PI ? 1 : -1), posB[1]];
+                    return [posA, posB, posC];
+                });
+
+            arcs.append("text")
+                .attr("class", "pie-label-outside")
+                .attr("dy", ".35em")
+                .text(d => `${d.data.category}: $${d.data.value.toFixed(2)}`) 
+                .attr("transform", function (d) {
+                    const midAngle = d.startAngle + (d.endAngle - d.startAngle) / 2;
+                    const pos = outerArc.centroid(d);
+                    const x = pieRadius * 0.95 * (midAngle < Math.PI ? 1 : -1);
+                    const y = pos[1];
+                    return `translate(${x},${y})`;
+                })
+                .style("text-anchor", function (d) {
+                    const midAngle = d.startAngle + (d.endAngle - d.startAngle) / 2;
+                    return midAngle < Math.PI ? "start" : "end";
+                })
+                .style("font-size", "10px")
+                .style("font-weight", "normal");
+        }
+    </script>
+</body>
+
+</html>
