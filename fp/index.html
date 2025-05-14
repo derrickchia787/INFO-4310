@@ -341,14 +341,12 @@
             pointer-events: none;
         }
 
-        /* Selected state style */
         .selected-state {
             stroke: #333 !important;
             stroke-width: 2px !important;
             filter: drop-shadow(0 0 3px rgba(0, 0, 0, 0.3));
         }
 
-        /* Tooltip improvements */
         .tooltip-header {
             font-weight: bold;
             font-size: 1.1em;
@@ -742,7 +740,7 @@
             <li>Projected 2025 minimum wages based on current state laws and inflation adjustments. Source: <a href="https://www.epi.org/minimum-wage-tracker/" target="_blank">EPI Minimum Wage Tracker</a></li>
             <li>Living wage estimates calculated using methodology from: <a href="https://livingwage.mit.edu/" target="_blank">MIT Living Wage Calculator</a> with adjustments for projected 2025 costs</li>
         </ul>
-        <p>Created with D3.js | INFO4310 Final Project | May 2023</p>
+        <p>INFO4310 Final Project</p>
     </footer>
 
     <script>
@@ -1861,7 +1859,6 @@
 
             d3.select("#surplus-deficit").html(resultHTML);
 
-            // Update pie chart with the accurate data
             updatePieChart(monthlyIncome, monthlyExpenses);
         }
 
